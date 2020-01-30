@@ -1,0 +1,55 @@
+#' Extractor toc data
+#'
+#' Convert all \code{.cvs} files in \code{toc} folder to \code{data.frame} and save as \code{.rds} file.
+#'
+#' This function is extracting data to be added to the database (and therefore make accessible for further analysis and forecasting)
+#' from \code{.csv} files.
+#'
+#' @param input directory from which to read the data
+#' @param output directory to which to write the data
+#'
+#' @return invisibly \code{TRUE} when completed successful
+#'
+#' @export
+#'
+extractor_toc <- function(
+  input,
+  output
+) {
+  message("\n########################################################\n")
+  message("Extracting toc\n")
+
+  # Get csv file names ------------------------------------------------------
+
+  toc_path <- file.path( input, "toc" )
+  toc_files <- list.files(
+    path = toc_path,
+    pattern = "*.csv",
+    full.names = TRUE,
+    recursive = TRUE
+  )
+
+  if (length(toc_files) == 0) {
+    message("nothing to extract\n")
+    message("\n########################################################\n")
+    return(invisible(FALSE))
+  }
+
+# Extract ---------------------------------------------------------------
+
+# SAVE --------------------------------------------------------------------
+
+  add_path <- file.path( output, "toc" )
+  dir.create( add_path, recursive = TRUE, showWarnings = FALSE )
+  # saveRDS(
+  #   object = res,
+  #   file = file.path(add_path, "toc.rds")
+  # )
+
+# Finalize ----------------------------------------------------------------
+
+  message("done\n")
+  message("\n########################################################\n")
+
+  invisible(TRUE)
+}
