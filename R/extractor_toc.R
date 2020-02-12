@@ -40,11 +40,17 @@ extractor_toc <- function(
 # SAVE --------------------------------------------------------------------
 
   add_path <- file.path( output, "toc" )
-  dir.create( add_path, recursive = TRUE, showWarnings = FALSE )
-  # saveRDS(
-  #   object = res,
-  #   file = file.path(add_path, "toc.rds")
-  # )
+  dir.create(
+    add_path,
+    recursive = TRUE,
+    showWarnings = FALSE
+  )
+  file.copy(
+    from = file.path(input, "toc", "."),
+    to = add_path,
+    recursive = TRUE,
+    overwrite = TRUE
+  )
 
 # Finalize ----------------------------------------------------------------
 

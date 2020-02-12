@@ -3,7 +3,5 @@
 export(extractor_toc)
 export(pre_processor_toc)
 export(register)
-importFrom(LEEF.Data,add_extractor)
-importFrom(LEEF.Data,add_pre_processor)
 importFrom(utils,read.csv)
 importFrom(utils,write.csv)
