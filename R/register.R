@@ -9,7 +9,7 @@ register <- function() {
     stop("This function requres the package to be installed!")
   }
 
-  LEEF.Data::add_extractor( pre_processor_toc )
+  LEEF.Data::add_pre_processor( pre_processor_toc )
   LEEF.Data::add_extractor( extractor_toc )
   ##
   invisible(TRUE)
