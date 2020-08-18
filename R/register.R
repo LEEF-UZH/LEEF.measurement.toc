@@ -1,4 +1,4 @@
-#' Register the processing of toc data in the LEEF.Data package
+#' Register the processing of toc data in the LEEF package
 #'
 #' @return invisibly \code{TRUE} when completed successful
 #'
