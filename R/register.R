@@ -5,12 +5,12 @@
 #' @export
 #'
 register <- function() {
-  if (is.null(system.file(package = "LEEF.Data"))) {
-    stop("This function requres the package to be installed!")
+  if (is.null(system.file(package = "LEEF"))) {
+    stop("This function requres the package LEEF to be installed!")
   }
 
-  LEEF.Data::add_pre_processor( pre_processor_toc )
-  LEEF.Data::add_extractor( extractor_toc )
+  LEEF::add_pre_processor( pre_processor_toc )
+  LEEF::add_extractor( extractor_toc )
   ##
   invisible(TRUE)
 }
