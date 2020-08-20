@@ -37,20 +37,17 @@ extractor_toc <- function(
 
 # Extract ---------------------------------------------------------------
 
-# SAVE --------------------------------------------------------------------
-
   add_path <- file.path( output, "toc" )
-  dir.create(
-    add_path,
-    recursive = TRUE,
-    showWarnings = FALSE
-  )
-  file.copy(
-    from = file.path(input, "toc", "."),
-    to = add_path,
-    recursive = TRUE,
-    overwrite = TRUE
-  )
+
+# Read file and save as rds -------------------------------------------------
+
+  for (fn in toc_files) {
+    fnout <- gsub( input, output, fn )
+    fnout <- gsub("\\.csv$", ".rds", fnout)
+    dir.create( dirname(fnout), recursive = TRUE, showWarnings = FALSE  )
+    saveRDS( read.csv( fn ), fnout )
+  }
+
 
 # Finalize ----------------------------------------------------------------
 
