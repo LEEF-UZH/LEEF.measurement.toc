@@ -1,4 +1,4 @@
-#' Preprocessor respirometer toc data
+#' Preprocessor o2meter toc data
 #'
 #' Split files in parts and save as csv
 #'
