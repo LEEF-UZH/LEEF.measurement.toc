@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre_processor_toc.R
 \name{pre_processor_toc}
 \alias{pre_processor_toc}
-\title{Preprocessor respirometer toc data}
+\title{Preprocessor o2meter toc data}
 \usage{
 pre_processor_toc(input, output)
 }
