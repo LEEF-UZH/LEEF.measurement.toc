@@ -45,7 +45,9 @@ extractor_toc <- function(
     fnout <- gsub( input, output, fn )
     fnout <- gsub("\\.csv$", ".rds", fnout)
     dir.create( dirname(fnout), recursive = TRUE, showWarnings = FALSE  )
-    saveRDS( read.csv( fn ), fnout )
+    dat <- read.csv( fn )
+    names(dat) <- tolower(names(dat))
+    saveRDS( dat, fnout )
   }
 
 
