@@ -105,7 +105,7 @@ pre_processor_toc <- function(
       colnames(data2) <- gsub(" |/|\\.\\.|\\.|\\. ", "_", colnames(data2))
       colnames(data2) <- tolower(colnames(data2))
       ##
-      target <- file.path( tmpdir, basename(fn) )
+      target <- file.path( tmpdir, gsub("\\.txt$", "", basename(fn)) )
       dir.create(
         target,
         recursive = TRUE,

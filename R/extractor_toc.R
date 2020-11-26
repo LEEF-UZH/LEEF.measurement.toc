@@ -10,6 +10,7 @@
 #'
 #' @return invisibly \code{TRUE} when completed successful
 #'
+#' @importFrom yaml read_yaml
 #' @export
 #'
 extractor_toc <- function(
@@ -42,11 +43,14 @@ extractor_toc <- function(
 # Read file and save as rds -------------------------------------------------
 
   for (fn in toc_files) {
-    fnout <- gsub( input, output, fn )
+    fnout <- gsub( normalizePath(input), normalizePath(output), normalizePath(fn) )
     fnout <- gsub("\\.csv$", ".rds", fnout)
     dir.create( dirname(fnout), recursive = TRUE, showWarnings = FALSE  )
     dat <- read.csv( fn )
-    names(dat) <- tolower(names(dat))
+    ##
+    timestamp <- yaml::read_yaml(file.path(input, "sample_metadata.yml"))$timestamp
+    dat <- cbind(timestamp = timestamp, dat)
+    ##
     saveRDS( dat, fnout )
   }
 
