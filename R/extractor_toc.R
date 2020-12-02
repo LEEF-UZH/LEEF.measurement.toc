@@ -44,14 +44,18 @@ extractor_toc <- function(
 
   for (fn in toc_files) {
     fnout <- gsub( normalizePath(input), normalizePath(output), normalizePath(fn) )
-    fnout <- gsub("\\.csv$", ".rds", fnout)
+    
     dir.create( dirname(fnout), recursive = TRUE, showWarnings = FALSE  )
     dat <- read.csv( fn )
     ##
     timestamp <- yaml::read_yaml(file.path(input, "sample_metadata.yml"))$timestamp
     dat <- cbind(timestamp = timestamp, dat)
     ##
-    saveRDS( dat, fnout )
+    write.csv( 
+    	dat, 
+    	file = fnout,
+    	row.names = FALSE
+	)
   }
 
   file.copy(
