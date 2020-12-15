@@ -11,6 +11,7 @@
 #' @return invisibly \code{TRUE} when completed successful
 #'
 #' @importFrom yaml read_yaml
+#' @importFrom utils write.csv
 #' @export
 #'
 extractor_toc <- function(
@@ -48,10 +49,10 @@ extractor_toc <- function(
     dir.create( dirname(fnout), recursive = TRUE, showWarnings = FALSE  )
     dat <- read.csv( fn )
     ##
-    timestamp <- yaml::read_yaml(file.path(input, "sample_metadata.yml"))$timestamp
+    timestamp <- yaml::read_yaml(file.path(input, "toc", "sample_metadata.yml"))$timestamp
     dat <- cbind(timestamp = timestamp, dat)
     ##
-    write.csv( 
+    utils::write.csv( 
     	dat, 
     	file = fnout,
     	row.names = FALSE
@@ -59,8 +60,8 @@ extractor_toc <- function(
   }
 
   file.copy(
-    from = file.path(input, "sample_metadata.yml"),
-    to = file.path(output, "sample_metadata.yml")
+    from = file.path(input, "toc", "sample_metadata.yml"),
+    to = file.path(output, "toc", "sample_metadata.yml")
   )
 
 # Finalize ----------------------------------------------------------------
