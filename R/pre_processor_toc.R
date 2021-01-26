@@ -126,6 +126,12 @@ pre_processor_toc <- function(
     showWarnings = FALSE
   )
   file.copy(
+  	file.path( input, "..", "00.general.parameter", "." ),
+  	file.path( output, "toc" ),
+  	recursive = TRUE,
+  	overwrite = TRUE
+  )
+  file.copy(
     file.path( tmpdir, "." ),
     to = file.path( output, "toc" ),
     recursive = TRUE
