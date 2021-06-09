@@ -36,8 +36,7 @@ add_new_data <- function(input, output) {
       processing <- file.path(input, paste0("CHECKING.", f, ".CHECKING"))
       error <- file.path(input, paste0("ERROR.", f, ".txt"))
 
-      on.exit(
-        {
+      on.exit({
           if (file.exists(processing)) {
             unlink(processing)
             utils::capture.output(print(result), file = error)
@@ -45,7 +44,7 @@ add_new_data <- function(input, output) {
         }
       )
       ##
-      file.create( processing )
+      file.create(processing)
       ##
       message("checking ", f)
       result <- list(
@@ -60,18 +59,19 @@ add_new_data <- function(input, output) {
 
       result$ok <- all(unlist(result))
 
-      if ( result$ok ) {
+      if (result$ok) {
         file.copy(
           from = file.path(input, f),
           to = file.path(output, "toc"),
           recursive = FALSE,
           overwrite = TRUE
         )
-        unlink( file.path(input, f) )
+        unlink(file.path(input, f))
         unlink(processing)
       }
       return(result)
-    }
+    },
+    mc.cores = getOption("mc.cores")
   )
   names(ok) <- files
   return(ok)
