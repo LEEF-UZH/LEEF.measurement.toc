@@ -26,7 +26,7 @@ pre_processor_toc <- function(
     recursive = TRUE
   )
   ##
-  tmpdir <- tempfile()
+  tmpdir <- file.path(output, "tmp")
   dir.create(tmpdir)
   ##
   lapply(
