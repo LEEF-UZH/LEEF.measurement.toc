@@ -16,7 +16,7 @@
     "name": "R",
     "url": "https://r-project.org"
   },
-  "runtimePlatform": "R version 4.1.0 (2021-05-18)",
+  "runtimePlatform": "R version 4.1.1 (2021-08-10)",
   "author": [
     {
       "@type": "Person",
@@ -93,5 +93,5 @@
     }
   ],
   "readme": "https://github.com/LEEF-UZH/LEEF.measurement.toc/blob/master/Readme.md",
-  "fileSize": "0KB"
+  "fileSize": "15.312KB"
 }
