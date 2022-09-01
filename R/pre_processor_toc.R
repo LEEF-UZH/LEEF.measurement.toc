@@ -32,91 +32,144 @@ pre_processor_toc <- function(
   lapply(
     toc_files,
     function(fn){
-      breaks <- which(readLines(fn) == "")
-      ##
+      txt <- readLines(fn)
+      breaks <- which(txt == "")
+
+
+      # Read Metadata -----------------------------------------------------------
+
+
       header <- utils::read.csv(
-        fn,
-        skip = 0,
-        nrows = breaks[[1]],
+        text =  txt[1:breaks[[1]]],
         header = FALSE,
-        row.names = 1,
         col.names = c("name", "value"),
         stringsAsFactors = FALSE
       )
-      rownames(header) <- gsub(" |/|\\.", "_", rownames(header))
-      rownames(header) <- tolower(rownames(header))
-      #
+      header$name <- gsub(" |/|\\.", "_", header$name)
+      header$name <- tolower(header$name)
+
+      # Read Measurement Parameter ----------------------------------------------
+
+
       layout <- utils::read.csv(
-        fn,
-        skip = breaks[[1]],
-        nrows = breaks[[2]] - breaks[[1]] - 1,
+        text = txt[(breaks[[1]]+1):breaks[[2]]],
         header = TRUE,
         stringsAsFactors = FALSE
       )
       colnames(layout) <- gsub(" |/|\\.\\.|\\.", "_", colnames(layout))
       colnames(layout) <- tolower(colnames(layout))
       #
-      sampletime <- utils::read.csv(
-        fn,
-        skip = breaks[[2]],
-        nrows = breaks[[3]] - breaks[[2]] - 1,
-        header = FALSE,
-        row.names = 1,
-        col.names = c("name", "value"),
-        stringsAsFactors = FALSE
-      )
-      rownames(sampletime) <- tolower(rownames(sampletime))
-      #
+      # sampletime <- utils::read.csv(
+      #   fn,
+      #   skip = breaks[[2]],
+      #   nrows =  -1,
+      #   header = FALSE,
+      #   col.names = c("name", "value"),
+      #   stringsAsFactors = FALSE
+      # )
+      # rownames(sampletime) <- tolower(rownames(sampletime))
+      # #
+
+      # Read actual data --------------------------------------------------------
+
+      txt <- txt[-(1:breaks[[2]])]
+      txt <- gsub("\"", "", txt)
+      txt <- gsub(" ", "", txt)
+
+      dat <- read.csv(text = txt)
+
+      idcol <- strsplit(txt[1], ",")[[1]]
+      idcol <- c(1, which (idcol == "Inj.Type"), length(idcol)+1)
+
       colNames <- c(
-        "curve_no",
-        "type",
-        "filename",
-        "date_time",
-        "max_area",
-        "volume",
-        "max conc.",
-        "correlation",
-        "r_Squared",
-        "sel",
-        "range",
-        "empty"
+        "position",
+        "identification",
+        "tc_inj.type",
+        "tc_conc.",
+        "tc_cv",
+        "tc_sample_1",
+        "tc_concentration_1",
+        "tc_sample_2",
+        "tc_concentration_2",
+        "tc_sample_3",
+        "tc_concentration_3",
+        "ic_inj.type",
+        "ic_conc.",
+        "ic_cv",
+        "ic_sample_1",
+        "ic_concentration_1",
+        "ic_sample_2",
+        "ic_concentration_2",
+        "ic_sample_3",
+        "ic_concentration_3",
+        "toc_inj.type",
+        "toc_conc.",
+        "toc_cv",
+        "tn_inj.type",
+        "tn_conc.",
+        "tn_cv",
+        "tn_sample_1",
+        "tn_concentration_1",
+        "tn_sample_2",
+        "tn_concentration_2",
+        "tn_sample_3",
+        "tn_concentration_3",
+        "TBD"
       )
-      data1 <- utils::read.csv(
-        fn,
-        skip = breaks[[3]],
-        nrows = breaks[[4]] - breaks[[3]] - 1,
-        header = FALSE,
+
+
+      colclasses <- c(
+        "integer",
+        "character",
+        "NULL", # "character",
+        "numeric",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "NULL", # "character",
+        "numeric",
+        "numeric",
+        "NULL", # "integer",
+        "character",
+        "NULL", # "integer",
+        "character",
+        "NULL", # "integer",
+        "character",
+        "NULL", # "character",
+        "numeric",
+        "logical",
+        "NULL", # "character",
+        "numeric",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "NULL", # "integer",
+        "numeric",
+        "logical"
+      )
+
+      data <- utils::read.csv(
+        text = txt,
+        header = TRUE,
         fill = TRUE,
         stringsAsFactors = FALSE,
-        col.names = colNames
+        colClasses = colclasses,
+        col.names = colNames,
+        row.names = NULL
       )
-      data1 <- data1[-1,-ncol(data1)]
+
+      data <- data[,-ncol(data)]
       ##
-      data2 <- utils::read.csv(
-        fn,
-        skip = breaks[[4]],
-        header = FALSE,
-        fill = TRUE,
-        stringsAsFactors = FALSE
-      )
-      data2 <- data2[,-ncol(data2)]
-      names(data2) <- data2[1,]
-      data2 <- data2[-1,]
-      colnames(data2) <- gsub(" |/|\\.\\.|\\.|\\. ", "_", colnames(data2))
-      colnames(data2) <- tolower(colnames(data2))
-      ##
-      target <- file.path( tmpdir, gsub("\\.txt$", "", basename(fn)) )
-      dir.create(
-        target,
-        recursive = TRUE,
-        showWarnings = FALSE
-      )
-      ##
-      utils::write.csv( header,     file.path(target, "header.csv"),     row.names = FALSE)
-      utils::write.csv( layout,     file.path(target, "layout.csv"),     row.names = FALSE)
-      utils::write.csv( sampletime, file.path(target, "sampletime.csv"), row.names = FALSE)
-      utils::write.csv( data1,      file.path(target, "data1.csv"),      row.names = FALSE)
-      utils::write.csv( data1,      file.path(target, "data2.csv"),      row.names = FALSE)
+
+      utils::write.csv( header, file.path(tmpdir, paste0("header.csv"), row.names = FALSE)
+      utils::write.csv( layout, file.path(tmpdir, paste0("layout.csv"), row.names = FALSE)
+      utils::write.csv( data,   file.path(tmpdir, "data.csv"  ), row.names = FALSE)
     }
   )
   ##
@@ -142,6 +195,8 @@ pre_processor_toc <- function(
     from = file.path(input, "sample_metadata.yml"),
     to = file.path(output, "toc", "sample_metadata.yml")
   )
+
+
 
   ##
   message("done\n")
