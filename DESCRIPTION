@@ -16,10 +16,11 @@ Depends:
     R (>= 3.5.0)
 Imports: 
 	utils,
-	yaml
+	yaml,
+	tools
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.1
 Suggests: 
     testthat,
     openssl

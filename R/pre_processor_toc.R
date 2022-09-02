@@ -8,6 +8,7 @@
 #' @return invisibly \code{TRUE} when completed successful
 #'
 #' @importFrom utils read.csv write.csv
+#' @importFrom tools file_path_sans_ext
 #'
 #' @export
 
@@ -32,6 +33,7 @@ pre_processor_toc <- function(
   lapply(
     toc_files,
     function(fn){
+      message("Processing ", fn," ...")
       txt <- readLines(fn)
       breaks <- which(txt == "")
 
@@ -39,6 +41,7 @@ pre_processor_toc <- function(
       # Read Metadata -----------------------------------------------------------
 
 
+      message("  |- Processing metadata ...")
       header <- utils::read.csv(
         text =  txt[1:breaks[[1]]],
         header = FALSE,
@@ -48,9 +51,11 @@ pre_processor_toc <- function(
       header$name <- gsub(" |/|\\.", "_", header$name)
       header$name <- tolower(header$name)
 
+
       # Read Measurement Parameter ----------------------------------------------
 
 
+      message("  |- Processing measurement parameter ...")
       layout <- utils::read.csv(
         text = txt[(breaks[[1]]+1):breaks[[2]]],
         header = TRUE,
@@ -72,6 +77,8 @@ pre_processor_toc <- function(
 
       # Read actual data --------------------------------------------------------
 
+
+      message("  |- Processing actual data ...")
       txt <- txt[-(1:breaks[[2]])]
       txt <- gsub("\"", "", txt)
       txt <- gsub(" ", "", txt)
@@ -166,10 +173,17 @@ pre_processor_toc <- function(
 
       data <- data[,-ncol(data)]
       ##
+      fn <- tools::file_path_sans_ext(basename(fn))
+      fn <- gsub(" ", "", fn)
+      fn <- gsub("-", "_", fn)
 
-      utils::write.csv( header, file.path(tmpdir, paste0("header.csv"), row.names = FALSE)
-      utils::write.csv( layout, file.path(tmpdir, paste0("layout.csv"), row.names = FALSE)
-      utils::write.csv( data,   file.path(tmpdir, "data.csv"  ), row.names = FALSE)
+
+      # Saving ------------------------------------------------------------------
+
+      message("  |- Saving files ...")
+      utils::write.csv( header, file.path(tmpdir, paste0(fn, ".header.csv")), row.names = FALSE)
+      utils::write.csv( layout, file.path(tmpdir, paste0(fn, ".layout.csv")), row.names = FALSE)
+      utils::write.csv( data,   file.path(tmpdir, paste0(fn, ".data.csv"  )), row.names = FALSE)
     }
   )
   ##
