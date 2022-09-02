@@ -13,8 +13,8 @@
 #' @export
 
 pre_processor_toc <- function(
-  input,
-  output
+    input,
+    output
 ) {
   message("\n########################################################\n")
   message("\nProcessing toc\n")
@@ -27,160 +27,137 @@ pre_processor_toc <- function(
     recursive = TRUE
   )
   ##
-  tmpdir <- file.path(output, "tmp")
-  dir.create(tmpdir)
+  tmpdir <- file.path(output, "toc", "tmp")
+  dir.create(tmpdir, showWarnings = FALSE, recursive = TRUE)
   ##
   lapply(
     toc_files,
     function(fn){
       message("Processing ", fn," ...")
       txt <- readLines(fn)
-      breaks <- which(txt == "")
 
 
       # Read Metadata -----------------------------------------------------------
 
 
       message("  |- Processing metadata ...")
+
+      secEnd <- grep("\"Extra Samples\"", txt) - 1
+      sec <- txt[1:secEnd]
+      sec <- sec[which(sec != "" )]
+      txt <- txt[-(1:secEnd)]
+
       header <- utils::read.csv(
-        text =  txt[1:breaks[[1]]],
+        text =  sec,
         header = FALSE,
         col.names = c("name", "value"),
         stringsAsFactors = FALSE
       )
-      header$name <- gsub(" |/|\\.", "_", header$name)
+      header$name <- gsub(" |/|\\.\\.|\\.", "_", header$name)
       header$name <- tolower(header$name)
+
+      rm(sec, secEnd)
 
 
       # Read Measurement Parameter ----------------------------------------------
 
 
       message("  |- Processing measurement parameter ...")
+
+      secEnd <- grep("\"Inj. Type\"", txt) - 1
+      sec <- txt[1:secEnd]
+      txt <- txt[-(1:secEnd)]
+      sec <- sec[which(sec != "" )]
+
+
       layout <- utils::read.csv(
-        text = txt[(breaks[[1]]+1):breaks[[2]]],
+        text = sec,
         header = TRUE,
         stringsAsFactors = FALSE
       )
       colnames(layout) <- gsub(" |/|\\.\\.|\\.", "_", colnames(layout))
       colnames(layout) <- tolower(colnames(layout))
-      #
-      # sampletime <- utils::read.csv(
-      #   fn,
-      #   skip = breaks[[2]],
-      #   nrows =  -1,
-      #   header = FALSE,
-      #   col.names = c("name", "value"),
-      #   stringsAsFactors = FALSE
-      # )
-      # rownames(sampletime) <- tolower(rownames(sampletime))
-      # #
+
+      rm(sec, secEnd)
 
       # Read actual data --------------------------------------------------------
 
 
       message("  |- Processing actual data ...")
-      txt <- txt[-(1:breaks[[2]])]
-      txt <- gsub("\"", "", txt)
-      txt <- gsub(" ", "", txt)
 
-      dat <- read.csv(text = txt)
+      sec <- txt
+      rm(txt)
+      sec <- sec[which(sec != "" )]
 
-      idcol <- strsplit(txt[1], ",")[[1]]
-      idcol <- c(1, which (idcol == "Inj.Type"), length(idcol)+1)
+      sec <- gsub("\"", "", sec)
+      sec <- gsub(" ", "", sec)
 
-      colNames <- c(
-        "position",
-        "identification",
-        "tc_inj.type",
-        "tc_conc.",
-        "tc_cv",
-        "tc_sample_1",
-        "tc_concentration_1",
-        "tc_sample_2",
-        "tc_concentration_2",
-        "tc_sample_3",
-        "tc_concentration_3",
-        "ic_inj.type",
-        "ic_conc.",
-        "ic_cv",
-        "ic_sample_1",
-        "ic_concentration_1",
-        "ic_sample_2",
-        "ic_concentration_2",
-        "ic_sample_3",
-        "ic_concentration_3",
-        "toc_inj.type",
-        "toc_conc.",
-        "toc_cv",
-        "tn_inj.type",
-        "tn_conc.",
-        "tn_cv",
-        "tn_sample_1",
-        "tn_concentration_1",
-        "tn_sample_2",
-        "tn_concentration_2",
-        "tn_sample_3",
-        "tn_concentration_3",
-        "TBD"
+      ### BEGIN TODO CHECK
+      ### Replace "ZERO !"
+      sec <- gsub("ZERO!", -999, sec)
+      ### END TODO CHECK
+
+      no_samples <- max(layout$samples) + 1
+      no_cols <- 2 + 3 + no_samples * 2
+      data_names <- c(
+        "position", "identification",
+        "inj_type", "conc", "cv",
+        paste0(c("sample", "conc"), "_", rep(1:no_samples, each = 2))
       )
 
-
-      colclasses <- c(
-        "integer",
-        "character",
-        "NULL", # "character",
-        "numeric",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "NULL", # "character",
-        "numeric",
-        "numeric",
-        "NULL", # "integer",
-        "character",
-        "NULL", # "integer",
-        "character",
-        "NULL", # "integer",
-        "character",
-        "NULL", # "character",
-        "numeric",
-        "logical",
-        "NULL", # "character",
-        "numeric",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "NULL", # "integer",
-        "numeric",
-        "logical"
-      )
-
-      data <- utils::read.csv(
-        text = txt,
+      sec_data <- utils::read.csv(
+        text = sec,
         header = TRUE,
         fill = TRUE,
         stringsAsFactors = FALSE,
-        colClasses = colclasses,
-        col.names = colNames,
         row.names = NULL
       )
 
-      data <- data[,-ncol(data)]
-      ##
-      fn <- tools::file_path_sans_ext(basename(fn))
-      fn <- gsub(" ", "", fn)
-      fn <- gsub("-", "_", fn)
+      ## TC
+      begin_col <- grep("Inj.Type", names(sec_data))[1]
+      end_col <- grep("Inj.Type", names(sec_data))[2] - 1
+      tc_data <- sec_data[,1:end_col]
+      names(tc_data) <- data_names
+      sec_data <- sec_data[,-(begin_col:end_col)]
+
+      ## IC
+      end_col <- grep("Inj.Type", names(sec_data))[2] -1
+      ic_data <- sec_data[,1:end_col]
+      names(ic_data) <- data_names
+      sec_data <- sec_data[,-(begin_col:end_col)]
+
+      ## TOC
+      end_col <- grep("Inj.Type", names(sec_data))[2] -1
+      toc_data <- sec_data[,1:end_col]
+      nd <- ncol(toc_data)
+      names(toc_data) <- data_names[1:nd]
+      toc_data <- cbind(
+        toc_data,
+        ic_data[,(nd+1):ncol(ic_data)]
+      )
+      toc_data[,(nd+1):ncol(ic_data)] <- NA
+      sec_data <- sec_data[,-(begin_col:end_col)]
+
+          ## TN
+      tn_data <- sec_data[-ncol(sec_data)]
+      names(tn_data) <- data_names
+      rm(sec_data)
+
+      data <- rbind(
+        tc_data,
+        toc_data,
+        ic_data,
+        tn_data
+      )
+
+      data <- data[, -grep("sample_", names(data))]
 
 
       # Saving ------------------------------------------------------------------
 
+
       message("  |- Saving files ...")
+      fn <- tools::file_path_sans_ext(basename(fn))
       utils::write.csv( header, file.path(tmpdir, paste0(fn, ".header.csv")), row.names = FALSE)
       utils::write.csv( layout, file.path(tmpdir, paste0(fn, ".layout.csv")), row.names = FALSE)
       utils::write.csv( data,   file.path(tmpdir, paste0(fn, ".data.csv"  )), row.names = FALSE)
@@ -193,24 +170,28 @@ pre_processor_toc <- function(
     showWarnings = FALSE
   )
   file.copy(
-  	file.path( input, "..", "00.general.parameter", "." ),
-  	file.path( output, "toc" ),
-  	recursive = TRUE,
-  	overwrite = TRUE
+    file.path( input, "..", "00.general.parameter", "." ),
+    file.path( output, "toc" ),
+    recursive = TRUE,
+    overwrite = TRUE
   )
   file.copy(
     file.path( tmpdir, "." ),
     to = file.path( output, "toc" ),
     recursive = TRUE
   )
+  file.copy(
+    list.files(file.path(input, "toc"), pattern = "\\.pdf$", full.names = TRUE),
+    file.path( output, "toc" ),
+    recursive = TRUE,
+    overwrite = TRUE
+  )
   ##
-  unlink(tmpdir)
+  unlink(tmpdir, recursive = TRUE, force = TRUE)
   file.copy(
     from = file.path(input, "sample_metadata.yml"),
     to = file.path(output, "toc", "sample_metadata.yml")
   )
-
-
 
   ##
   message("done\n")
