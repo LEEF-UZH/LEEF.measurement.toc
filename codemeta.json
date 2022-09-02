@@ -7,7 +7,7 @@
   "codeRepository": "https://github.com/LEEF-UZH/LEEF.measurement.toc",
   "issueTracker": "https://github.com/LEEF-UZH/LEEF.measurement.toc/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.8.5",
+  "version": "0.8.9",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",

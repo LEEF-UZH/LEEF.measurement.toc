@@ -181,6 +181,9 @@ extractor_toc <- function(
       utils::write.csv( data,   file.path(tmpdir, paste0(fn, ".data.csv"  )), row.names = FALSE)
 
       ## TODO Add timestamps (from file name...)
+      ## TODO determine bottle
+      ## TODO add date of sampling
+      ##
     }
   )
   ##
