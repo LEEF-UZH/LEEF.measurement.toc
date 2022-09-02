@@ -15,6 +15,7 @@ License: MIT + file LICENSE
 Depends: 
     R (>= 3.5.0)
 Imports: 
+  loggit,
 	utils,
 	yaml,
 	tools

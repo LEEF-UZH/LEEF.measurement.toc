@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre_processor_toc.R
 \name{pre_processor_toc}
 \alias{pre_processor_toc}
-\title{Preprocessor o2meter toc data}
+\title{Preprocessor toc data}
 \usage{
 pre_processor_toc(input, output)
 }
@@ -15,5 +15,5 @@ pre_processor_toc(input, output)
 invisibly \code{TRUE} when completed successful
 }
 \description{
-Split files in parts and save as csv
+Copy original text files
 }
