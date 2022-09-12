@@ -7,7 +7,7 @@
   "codeRepository": "https://github.com/LEEF-UZH/LEEF.measurement.toc",
   "issueTracker": "https://github.com/LEEF-UZH/LEEF.measurement.toc/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
@@ -117,6 +117,6 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "15.553KB",
+  "fileSize": "15.508KB",
   "readme": "https://github.com/LEEF-UZH/LEEF.measurement.toc/blob/master/Readme.md"
 }

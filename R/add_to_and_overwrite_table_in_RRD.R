@@ -51,15 +51,13 @@ add_to_and_overwrite_table_in_RRD <- function(
     overwrite = TRUE
   )
   tryCatch(
-    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_timetamp on flowcam__algae_density(timestamp);"),
-
+    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_timetamp on toc__toc(timestamp);")
   )
   try(
-    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_bottle on flowcam__algae_density(bottle);")
+    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_bottle on toc__toc(bottle);")
   )
   try(
-    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_timestamp_bottle on flowcam__algae_density(timestamp, bottle);")
+    DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_timestamp_bottle on toc__toc(timestamp, bottle);")
   )
-
 
 }
