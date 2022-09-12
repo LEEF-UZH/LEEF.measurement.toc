@@ -12,7 +12,7 @@ extractor_toc(input, output)
 \item{output}{directory to which to write the data}
 }
 \value{
-invisibly \code{TRUE} when completed successful
+invisibly the names of the csv files created
 }
 \description{
 Convert all \code{.cvs} files in \code{toc} folder to \code{data.frame} and save as \code{.rds} file.

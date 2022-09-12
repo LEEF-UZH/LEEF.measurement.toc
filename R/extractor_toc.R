@@ -8,9 +8,9 @@
 #' @param input directory from which to read the data
 #' @param output directory to which to write the data
 #'
-#' @return invisibly \code{TRUE} when completed successful
+#' @return invisibly the names of the csv files created
 #'
-#' @importFrom yaml read_yaml
+#' @importFrom tools file_path_sans_ext
 #' @importFrom utils write.csv
 #' @importFrom loggit set_logfile
 #' @export
@@ -170,20 +170,75 @@ extractor_toc <- function(
 
       data <- data[, -grep("sample_", names(data))]
 
+      fn <- tools::file_path_sans_ext(basename(fn))
+
+      bottle <- sapply(
+        strsplit(data$identification, "\\."),
+        function(x){
+          if (length(x) < 3){
+            b <- NA
+          } else {
+            b <- x[[3]]
+            b <- gsub("^S", "b_", b)
+          }
+          return(b)
+        }
+      )
+
+      timestamps <- gsub("LEEF_|A|B", "", fn)
+      timestamps <- strsplit(timestamps, "und")[[1]]
+      timestamps <- format(as.Date(timestamps, "%y_%m_%d"), "%Y%m%d")
+
+      bn <- gsub("b_", "", bottle)
+      bn <- as.integer(bn)
+      ti <- 1
+      timestamp <- rep(NA, length(bn))
+      for (i in 1:(length(bn)-1)){
+        if (is.na(bn[i])){
+          timestamp[i] <- NA
+          ti <- 1
+        } else if (isTRUE( (bn[i] < bn[i+1]) | is.na(bn[i+1]) )) {
+          timestamp[i] <- timestamps[ti]
+        } else if (isTRUE(bn[i] > bn[i+1])) {
+          timestamp[i] <- timestamps[ti]
+          ti <- ifelse(
+            ti == 1,
+            2,
+            1
+          )
+        }
+      }
+      i <- length(bn)
+      if (is.na(bn[i])){
+        timestamp[i] <- NA
+      } else {
+        timestamp[i] <- timestamps[ti]
+      }
+
+
+      ad <- header[header$name=="date","value"]
+      at <- header[header$name=="time","value"]
+
+      anTime <- paste(as.Date(paste0(ad), "%A, %B %d, %Y"), at)
+
+      data <- cbind(
+        filename = fn,
+        anaysis_time = anTime,
+        timestamp = timestamp,
+        bottle = bottle,
+        data
+      )
+
+
 
       # Saving ------------------------------------------------------------------
 
 
       message("  |- Saving files ...")
-      fn <- tools::file_path_sans_ext(basename(fn))
       utils::write.csv( header, file.path(tmpdir, paste0(fn, ".header.csv")), row.names = FALSE)
       utils::write.csv( layout, file.path(tmpdir, paste0(fn, ".layout.csv")), row.names = FALSE)
       utils::write.csv( data,   file.path(tmpdir, paste0(fn, ".data.csv"  )), row.names = FALSE)
 
-      ## TODO Add timestamps (from file name...)
-      ## TODO determine bottle
-      ## TODO add date of sampling
-      ##
     }
   )
   ##

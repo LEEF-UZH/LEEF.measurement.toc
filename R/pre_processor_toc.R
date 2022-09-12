@@ -7,7 +7,6 @@
 #' @return invisibly \code{TRUE} when completed successful
 #'
 #' @importFrom utils read.csv write.csv
-#' @importFrom tools file_path_sans_ext
 #' @importFrom loggit set_logfile
 #'
 #' @export
