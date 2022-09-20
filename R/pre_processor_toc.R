@@ -29,6 +29,12 @@ pre_processor_toc <- function(
   )
   loggit::set_logfile(file.path(output, "toc", "toc.log"))
 
+  writeLines(
+    text = capture.output(sessionInfo()),
+    con = file.path(output, "toc", "RSessionInfo.pre_processor.txt")
+  )
+
+
   message("\n########################################################\n")
   message("\nProcessing toc\n")
   ##

@@ -34,6 +34,12 @@ extractor_toc <- function(
   )
   loggit::set_logfile(file.path(output, "o2meter", "o2meter.log"))
 
+  writeLines(
+    text = capture.output(sessionInfo()),
+    con = file.path(output, "toc", "RSessionInfo.extractor.txt")
+  )
+
+
   message("\n########################################################\n")
   message("Extracting toc\n")
 
@@ -44,6 +50,7 @@ extractor_toc <- function(
     full.names = TRUE,
     recursive = TRUE
   )
+  toc_files <- grep("RSessionInfo", toc_files, value = TRUE, invert = TRUE)
   ##
   tmpdir <- file.path(output, "toc", "tmp")
   dir.create(tmpdir, showWarnings = FALSE, recursive = TRUE)
@@ -51,7 +58,7 @@ extractor_toc <- function(
   lapply(
     toc_files,
     function(fn){
-      message("Processing ", fn," ...")
+      message("Processing ", basename(fn)," ...")
       txt <- readLines(fn)
 
 
@@ -87,7 +94,6 @@ extractor_toc <- function(
       txt <- txt[-(1:secEnd)]
       sec <- sec[which(sec != "" )]
 
-
       layout <- utils::read.csv(
         text = sec,
         header = TRUE,
@@ -97,6 +103,7 @@ extractor_toc <- function(
       colnames(layout) <- tolower(colnames(layout))
 
       rm(sec, secEnd)
+
 
       # Read actual data --------------------------------------------------------
 
@@ -112,7 +119,7 @@ extractor_toc <- function(
 
       ### BEGIN TODO CHECK
       ### Replace "ZERO !"
-      sec <- gsub("ZERO!", -999, sec)
+      sec <- gsub("ZERO!", 0, sec)
       ### END TODO CHECK
 
       no_samples <- max(layout$samples) + 1
@@ -172,7 +179,7 @@ extractor_toc <- function(
 
       fn <- tools::file_path_sans_ext(basename(fn))
 
-      bottle <- sapply(
+      bottles <- sapply(
         strsplit(data$identification, "\\."),
         function(x){
           if (length(x) < 3){
@@ -185,36 +192,24 @@ extractor_toc <- function(
         }
       )
 
-      timestamps <- gsub("LEEF_|A|B", "", fn)
-      timestamps <- strsplit(timestamps, "und")[[1]]
-      timestamps <- format(as.Date(timestamps, "%y_%m_%d"), "%Y%m%d")
-
-      bn <- gsub("b_", "", bottle)
-      bn <- as.integer(bn)
-      ti <- 1
-      timestamp <- rep(NA, length(bn))
-      for (i in 1:(length(bn)-1)){
-        if (is.na(bn[i])){
-          timestamp[i] <- NA
-          ti <- 1
-        } else if (isTRUE( (bn[i] < bn[i+1]) | is.na(bn[i+1]) )) {
-          timestamp[i] <- timestamps[ti]
-        } else if (isTRUE(bn[i] > bn[i+1])) {
-          timestamp[i] <- timestamps[ti]
-          ti <- ifelse(
-            ti == 1,
-            2,
-            1
-          )
+      timestamps <- sapply(
+        strsplit(data$identification, "\\."),
+        function(x){
+          if (length(x) < 3){
+            timestamp <- NA
+          } else {
+            day <- x[[1]]
+            month <- x[[2]]
+            year <- ifelse(
+              as.integer(month) >= 9,
+              2021,
+              2022
+            )
+            timestamp <- paste0(year, month, day)
+          }
+          return(timestamp)
         }
-      }
-      i <- length(bn)
-      if (is.na(bn[i])){
-        timestamp[i] <- NA
-      } else {
-        timestamp[i] <- timestamps[ti]
-      }
-
+      )
 
       ad <- header[header$name=="date","value"]
       at <- header[header$name=="time","value"]
@@ -224,10 +219,11 @@ extractor_toc <- function(
       data <- cbind(
         filename = fn,
         anaysis_time = anTime,
-        timestamp = timestamp,
-        bottle = bottle,
+        timestamp = timestamps,
+        bottle = bottles,
         data
       )
+
 
 
 
@@ -248,12 +244,6 @@ extractor_toc <- function(
   pdfs <- grep("\\.pdf$", ftc, value = TRUE)
   ftc <- grep("\\.pdf$", ftc, value = TRUE, invert = TRUE)
 
-  file.copy(
-    ftc,
-    tmpdir,
-    recursive = TRUE,
-    overwrite = TRUE
-  )
   dir.create(
     file.path( tmpdir, "pdf"),
     recursive = FALSE,
