@@ -29,36 +29,37 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r}
+db <- "/Volumes/LEEF/0.RRD/LEEF 1/LEEF.RRD.sqlite"
+options(RRDdb = db)
+
+
 unlink(c("~/Desktop/1.pre-processed.data/toc/", "~/Desktop/2.extracted.data/toc/"), recursive = TRUE)
 pre_processor_toc("~/Desktop/0.raw.data/", "~/Desktop/1.pre-processed.data/")
 extractor_toc("~/Desktop/1.pre-processed.data/", "~/Desktop/2.extracted.data/")
-add_to_and_overwrite_table_in_RRD("~/Desktop/2.extracted.data/", "~/Desktop/9.backend/toc.sqlite", overwrite = TRUE)
+add_to_and_overwrite_table_in_RRD(input = "~/Desktop/2.extracted.data/", dbname = db, overwrite = TRUE)
 
-
-db <- "~/Desktop/9.backend/toc.sqlite"
-options(RRDdb = db)
 
 toc <- LEEF.analysis::db_read_table(table = "toc__toc") %>%
   collect()
 
 toc_original <- toc
 
-conn <- DBI::dbConnect(
-  drv = RSQLite::SQLite(),
-  db = "~/Desktop/9.backend/toc.sqlite"
-)
-
-DBI::dbBegin(conn)
-DBI::dbWriteTable(
-  conn,
-  name = "toc__toc_original",
-  value = toc_original,
-  overwrite = TRUE,
-  append = FALSE
-)
-DBI::dbCommit(conn)
-
-DBI::dbDisconnect(conn)
+# conn <- DBI::dbConnect(
+#   drv = RSQLite::SQLite(),
+#   db = db
+# )
+# 
+# DBI::dbBegin(conn)
+# DBI::dbWriteTable(
+#   conn,
+#   name = "toc__toc_original",
+#   value = toc_original,
+#   overwrite = TRUE,
+#   append = FALSE
+# )
+# DBI::dbCommit(conn)
+# 
+# DBI::dbDisconnect(conn)
 
 toc$id <- 1:nrow(toc)
 ```
