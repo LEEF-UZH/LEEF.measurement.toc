@@ -50,7 +50,7 @@ add_to_and_overwrite_table_in_RRD <- function(
     value = toc_data,
     overwrite = TRUE
   )
-  tryCatch(
+  try(
     DBI::dbExecute(conn, "CREATE INDEX idx_toc__toc_timetamp on toc__toc(timestamp);")
   )
   try(

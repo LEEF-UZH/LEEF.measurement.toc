@@ -32,7 +32,7 @@ extractor_toc <- function(
     recursive = TRUE,
     showWarnings = FALSE
   )
-  loggit::set_logfile(file.path(output, "o2meter", "o2meter.log"))
+  loggit::set_logfile(file.path(output, "toc", "toc.log"))
 
   writeLines(
     text = capture.output(sessionInfo()),
