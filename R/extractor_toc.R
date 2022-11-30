@@ -62,47 +62,59 @@ extractor_toc <- function(
       txt <- readLines(fn)
 
 
-      # Read Metadata -----------------------------------------------------------
+      # Split data file ---------------------------------------------------------
+
+
+      message("  |- Splitting file ...")
+
+      secEnd <- grep("\"Extra Samples\"", txt) - 1
+      metadata <- txt[1:secEnd]
+      metadata <- metadata[which(metadata != "" )]
+      txt <- txt[-(1:secEnd)]
+
+      secEnd <- grep("\"Inj. Type\"", txt) - 1
+      parameter <- txt[1:secEnd]
+      parameter <- parameter[which(parameter != "" )]
+      txt <- txt[-(1:secEnd)]
+
+      datatext <- txt
+      datatext <- datatext[which(datatext != "" )]
+      datatext <- gsub("\"", "", datatext)
+      datatext <- gsub(" ", "", datatext)
+
+      ### BEGIN TODO CHECK
+      ### Replace "ZERO !"
+      datatext <- gsub("ZERO!", 0, datatext)
+      ### END TODO CHECK
+
+
+      # Processing --------------------------------------------------------------
 
 
       message("  |- Processing metadata ...")
 
-      secEnd <- grep("\"Extra Samples\"", txt) - 1
-      sec <- txt[1:secEnd]
-      sec <- sec[which(sec != "" )]
-      txt <- txt[-(1:secEnd)]
-
-      header <- utils::read.csv(
-        text =  sec,
+      metadata <- utils::read.csv(
+        text =  metadata,
         header = FALSE,
         col.names = c("name", "value"),
         stringsAsFactors = FALSE
       )
-      header$name <- gsub(" |/|\\.\\.|\\.", "_", header$name)
-      header$name <- tolower(header$name)
-
-      rm(sec, secEnd)
+      metadata$name <- gsub(" |/|\\.\\.|\\.", "_", metadata$name)
+      metadata$name <- tolower(metadata$name)
 
 
-      # Read Measurement Parameter ----------------------------------------------
+      # Read Parameter ----------------------------------------------
 
 
-      message("  |- Processing measurement parameter ...")
+      message("  |- Processing parameter ...")
 
-      secEnd <- grep("\"Inj. Type\"", txt) - 1
-      sec <- txt[1:secEnd]
-      txt <- txt[-(1:secEnd)]
-      sec <- sec[which(sec != "" )]
-
-      layout <- utils::read.csv(
-        text = sec,
+      parameter <- utils::read.csv(
+        text = parameter,
         header = TRUE,
         stringsAsFactors = FALSE
       )
-      colnames(layout) <- gsub(" |/|\\.\\.|\\.", "_", colnames(layout))
-      colnames(layout) <- tolower(colnames(layout))
-
-      rm(sec, secEnd)
+      colnames(parameter) <- gsub(" |/|\\.\\.|\\.", "_", colnames(parameter))
+      colnames(parameter) <- tolower(colnames(parameter))
 
 
       # Read actual data --------------------------------------------------------
@@ -110,19 +122,7 @@ extractor_toc <- function(
 
       message("  |- Processing actual data ...")
 
-      sec <- txt
-      rm(txt)
-      sec <- sec[which(sec != "" )]
-
-      sec <- gsub("\"", "", sec)
-      sec <- gsub(" ", "", sec)
-
-      ### BEGIN TODO CHECK
-      ### Replace "ZERO !"
-      sec <- gsub("ZERO!", 0, sec)
-      ### END TODO CHECK
-
-      no_samples <- max(layout$samples) + 1
+      no_samples <- max(parameter$samples) + max(parameter$extra_samples)
       no_cols <- 2 + 3 + no_samples * 2
       data_names <- c(
         "position", "identification",
@@ -131,7 +131,7 @@ extractor_toc <- function(
       )
 
       sec_data <- utils::read.csv(
-        text = sec,
+        text = datatext,
         header = TRUE,
         fill = TRUE,
         stringsAsFactors = FALSE,
@@ -211,8 +211,8 @@ extractor_toc <- function(
         }
       )
 
-      ad <- header[header$name=="date","value"]
-      at <- header[header$name=="time","value"]
+      ad <- metadata[metadata$name=="date","value"]
+      at <- metadata[metadata$name=="time","value"]
 
       anTime <- paste(as.Date(paste0(ad), "%A, %B %d, %Y"), at)
 
@@ -231,10 +231,9 @@ extractor_toc <- function(
 
 
       message("  |- Saving files ...")
-      utils::write.csv( header, file.path(tmpdir, paste0(fn, ".header.csv")), row.names = FALSE)
-      utils::write.csv( layout, file.path(tmpdir, paste0(fn, ".layout.csv")), row.names = FALSE)
-      utils::write.csv( data,   file.path(tmpdir, paste0(fn, ".data.csv"  )), row.names = FALSE)
-
+      utils::write.csv( metadata,  file.path(tmpdir, paste0(fn, ".metadata.csv" )), row.names = FALSE)
+      utils::write.csv( parameter, file.path(tmpdir, paste0(fn, ".parameter.csv")), row.names = FALSE)
+      utils::write.csv( data,      file.path(tmpdir, paste0(fn, ".data.csv"     )), row.names = FALSE)
     }
   )
   ##

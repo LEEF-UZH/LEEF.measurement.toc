@@ -29,7 +29,69 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r}
-db <- "/Volumes/LEEF/0.RRD/LEEF 1/LEEF.RRD.sqlite"
+pre_processor_toc("~/Desktop/0.raw.data/", "~/Desktop/1.pre-processed.data/")
+extractor_toc("~/Desktop/1.pre-processed.data/", "~/Desktop/2.extracted.data/")
+```
+
+## Read parameter and data files and determine CV and number extra measurements
+```{r}
+#| label: parameter
+
+fns <- sapply(
+  list.files("~/Desktop/2.extracted.data/toc/", "data", full.names = FALSE),
+  function(fn){
+    x <- strsplit(fn, "\\.")[[1]][[1]]
+  }
+)
+
+data <- lapply(
+    fns,
+    function(fn){
+      p <- read.csv(file.path("~/Desktop/2.extracted.data/toc/", paste(fn, "parameter", "csv", sep = ".")))
+      d <- read.csv(file.path("~/Desktop/2.extracted.data/toc/", paste(fn, "data", "csv", sep = ".")))
+      return(list(
+        data = d, 
+        parameter = p, 
+        samples = max(p$samples), 
+        extra_samples = max(p$extra_samples), 
+        max_cv = max(p$max_cv)
+      )
+      )
+    }
+)
+
+sapply(data, "[[", "samples") |> plot(ylab = "samples") |> print()
+sapply(data, "[[", "extra_samples") |> plot(ylab = "extra_samples") |> print()
+sapply(data, "[[", "max_cv") |> plot(ylab = "max_cv") |> print()
+
+samples <- sapply(data, "[[", "samples") |> min()
+extra_samples <- sapply(data, "[[", "extra_samples") |> min()
+max_cv <- sapply(data, "[[", "max_cv") |> max()
+
+no_samples <- samples + extra_samples
+max_col <- (2 + 3 + no_samples * 2) + 1
+      
+```
+
+## Read data and adjust different number of samples and cv
+```{r}
+#| label: data
+toc <- lapply(
+  data,
+  function(x){
+    result <- x$data[,1:max_col]
+    return(result)
+  }
+) |> do.call(what = rbind)
+toc$id <- 1:nrow(toc)
+# I DO NOT KNOW HOW TO CONTINUE HERE
+```
+
+## Add to database
+```{r}
+#| eval: false
+
+db <- "LEEF.RRD.TOC.sqlite"
 options(RRDdb = db)
 
 
@@ -133,6 +195,39 @@ Fixed two typos in the raw data. Now, it looks OK for me.
 
 - `LEEF_21_11_12`: "Analysis Name","LEEF_21_11_12 und 21_15_10A.adb"
 - `LEEF_22_01_19 und 22_01_21A`: All analysis for 22_01_21 are not valid
+
+## Recalculate `conc`
+As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
+- **samples**: `r samples`
+- **extra_samples**: `r extra_samples`
+- **max_cv**: `r max_cv`
+In case there are more extra samples, the last ones were be discarded.
+
+Now we calculate `conc`
+
+```{r}
+#| label: calc_conc_cv
+conc_ext <- function(c1, c2, c3){
+  DETERMINE WHICH ONE TO EXCLUDE!!!!!!  
+  (ca + cb) / 2
+}
+
+ifelse(
+  toc$cv <= max_cv,
+  (toc$conc_1 + toc$conc_1) / 2,
+  HERE CALCULATION
+)
+
+toc$cv <- apply(
+  toc[,c("conc_1", "conc_2")],
+  1,
+  function(x){
+    sd(c(x["conc_1"], x["conc_2"])) / mean(c(x["conc_1"], x["conc_2"])) * 100
+  }
+)
+```
+
+
 
 ## Identify TOC measurements which are based on missing IC or TC measurements
 We have to identify and remove the TOC measurements which are using wrong measurements, i.e. TC or IC not available.
