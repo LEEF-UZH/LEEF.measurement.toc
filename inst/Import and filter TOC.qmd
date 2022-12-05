@@ -38,7 +38,7 @@ extractor_toc("~/Desktop/1.pre-processed.data/", "~/Desktop/2.extracted.data/")
 #| label: parameter
 
 fns <- sapply(
-  list.files("~/Desktop/2.extracted.data/toc/", "data", full.names = FALSE),
+  list.files("~/Desktop/2.extracted.data/toc/", "\\.data\\.", full.names = FALSE),
   function(fn){
     x <- strsplit(fn, "\\.")[[1]][[1]]
   }
@@ -84,48 +84,7 @@ toc <- lapply(
   }
 ) |> do.call(what = rbind)
 toc$id <- 1:nrow(toc)
-# I DO NOT KNOW HOW TO CONTINUE HERE
 ```
-
-## Add to database
-```{r}
-#| eval: false
-
-db <- "LEEF.RRD.TOC.sqlite"
-options(RRDdb = db)
-
-
-unlink(c("~/Desktop/1.pre-processed.data/toc/", "~/Desktop/2.extracted.data/toc/"), recursive = TRUE)
-pre_processor_toc("~/Desktop/0.raw.data/", "~/Desktop/1.pre-processed.data/")
-extractor_toc("~/Desktop/1.pre-processed.data/", "~/Desktop/2.extracted.data/")
-add_to_and_overwrite_table_in_RRD(input = "~/Desktop/2.extracted.data/", dbname = db, overwrite = TRUE)
-
-
-toc <- LEEF.analysis::db_read_table(table = "toc__toc") %>%
-  collect()
-
-toc_original <- toc
-
-# conn <- DBI::dbConnect(
-#   drv = RSQLite::SQLite(),
-#   db = db
-# )
-# 
-# DBI::dbBegin(conn)
-# DBI::dbWriteTable(
-#   conn,
-#   name = "toc__toc_original",
-#   value = toc_original,
-#   overwrite = TRUE,
-#   append = FALSE
-# )
-# DBI::dbCommit(conn)
-# 
-# DBI::dbDisconnect(conn)
-
-toc$id <- 1:nrow(toc)
-```
-
 
 
 ## Remove missing `inj_type`
@@ -196,35 +155,65 @@ Fixed two typos in the raw data. Now, it looks OK for me.
 - `LEEF_21_11_12`: "Analysis Name","LEEF_21_11_12 und 21_15_10A.adb"
 - `LEEF_22_01_19 und 22_01_21A`: All analysis for 22_01_21 are not valid
 
-## Recalculate `conc`
+## Recalculate `conc` and TOC
 As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
 - **samples**: `r samples`
 - **extra_samples**: `r extra_samples`
 - **max_cv**: `r max_cv`
 In case there are more extra samples, the last ones were be discarded.
 
+In addition, we have calculate the TOC, which is `TOC = TC - IC`
+
 Now we calculate `conc`
 
 ```{r}
 #| label: calc_conc_cv
-conc_ext <- function(c1, c2, c3){
-  DETERMINE WHICH ONE TO EXCLUDE!!!!!!  
-  (ca + cb) / 2
+conc_ext <- function(c1, c2, c3, cv, max_cv){
+  cvf <- function(x, y){
+    sapply(
+      1:length(x),
+      function(i){
+        sd(c(x[i], y[i])) / mean(c(x[i], y[i])) * 100
+      }
+    )
+  }
+  
+  conc_org <- cv < max_cv
+
+  conc_13 <- cvf(c1, c3) < max_cv
+  conc_13[conc_org] <- FALSE
+  
+  conc_23 <- !conc_13
+  conc_23[conc_org] <- FALSE
+  
+  conc <- c1
+  conc[] <- NA
+  
+  conc[which(conc_org)] <- rowMeans(data.frame(c1[which(conc_org)], c2[which(conc_org)]))
+  conc[which(conc_13) ] <- rowMeans(data.frame(c1[which(conc_13)],  c2[which(conc_13) ]))
+  conc[which(conc_23) ] <- rowMeans(data.frame(c1[which(conc_23)],  c2[which(conc_23) ]))
+
+  return(conc)
 }
 
-ifelse(
-  toc$cv <= max_cv,
-  (toc$conc_1 + toc$conc_1) / 2,
-  HERE CALCULATION
-)
+toc$conc_old <- toc$conc
+toc$conc <- conc_ext(toc$conc_1, toc$conc_2, toc$conc_3, toc$cv, max_cv)
 
-toc$cv <- apply(
-  toc[,c("conc_1", "conc_2")],
-  1,
-  function(x){
-    sd(c(x["conc_1"], x["conc_2"])) / mean(c(x["conc_1"], x["conc_2"])) * 100
-  }
-)
+i <- which(toc$inj_type == "TOC")
+toc$conc[i] <- NA
+
+TOC_calc <- toc %>% 
+  mutate(an_id = paste(filename, position)) %>%
+  pivot_wider(id_cols = an_id, names_from = inj_type, values_from = conc) %>%
+  mutate(TOC_calc = TC - IC) %>%
+  select(an_id, TOC_calc) %>%
+  mutate(an_id = paste(an_id, "TOC"))
+
+toc <- toc %>% 
+  mutate(an_id = paste(filename, position, inj_type)) %>%
+  left_join(TOC_calc, by = "an_id") %>%
+  mutate( conc = ifelse(inj_type == "TOC", TOC_calc, conc) ) %>%
+  select( -TOC_calc, -an_id)
 ```
 
 
@@ -301,18 +290,7 @@ cat("After  : ", after, "\n")
 As TOC is calculated as `TC - IC = TOC` we now have to re-calculate the TOC values
 
 ```{r}
-TOC_calc <- toc %>% 
-  mutate(an_id = paste(filename, position)) %>%
-  pivot_wider(id_cols = an_id, names_from = inj_type, values_from = conc) %>%
-  mutate(TOC_calc = TC - IC) %>%
-  select(an_id, TOC_calc) %>%
-  mutate(an_id = paste(an_id, "TOC"))
 
-toc <- toc %>% 
-  mutate(an_id = paste(filename, position, inj_type)) %>%
-  left_join(TOC_calc, by = "an_id") %>%
-  mutate( conc = ifelse(inj_type == "TOC", TOC_calc, conc) ) %>%
-  select( -TOC_calc, -an_id)
 ```
 
 And the plot again after re-calculation of the TOC values
@@ -323,6 +301,22 @@ toc %>%
   stat_density(bw = 1, na.rm = TRUE) +
   facet_grid(rows = vars(inj_type), scales = "free_y")
 ```
+
+## Add to database
+```{r}
+#| label: add_to_dv
+
+db <- "LEEF.RRD.TOC.sqlite"
+options(RRDdb = db)
+
+add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db, overwrite = TRUE)
+
+toc_original <- toc
+
+toc$id <- 1:nrow(toc)
+```
+
+
 
 ## Plot before filtering
 Now let's look at the plots of the measurements per bottle per timestep

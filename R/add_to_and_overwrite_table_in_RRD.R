@@ -1,6 +1,6 @@
 #' Add files to database
 #'
-#' @param input directory from which to read the data
+#' @param toc the (\code{data.frame}) containing the toc data for the database
 #' @param dbname name and path to the database in which the data should be written
 #' @param append if \code{TRUE}, data will be appended to the existing table.
 #'   If \code{FALSE} (the default), an error will be raised if the table exists already,
@@ -17,24 +17,11 @@
 #'
 #' @examples
 add_to_and_overwrite_table_in_RRD <- function(
-    input,
+    toc,
     dbname,
     append = FALSE,
     overwrite = FALSE
 ){
-  data_files <- list.files(
-    file.path(input, "toc"),
-    pattern = "\\.data\\.csv$",
-    full.names = TRUE
-  )
-
-  toc_data <- NULL
-  for (fn in data_files){
-    toc_data <- rbind(
-      toc_data,
-      read.csv(fn)
-    )
-  }
 
   conn <- NULL
   conn <- DBI::dbConnect(RSQLite::SQLite(), dbname )
@@ -47,7 +34,7 @@ add_to_and_overwrite_table_in_RRD <- function(
 
   DBI::dbWriteTable(
     conn,name = "toc__toc",
-    value = toc_data,
+    value = toc,
     overwrite = TRUE
   )
   try(
