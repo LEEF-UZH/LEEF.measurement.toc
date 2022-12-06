@@ -29,6 +29,10 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r}
+
+db <- "~/Desktop/9.backend/LEEF.RRD.TOC.sqlite"
+options(RRDdb = db)
+
 pre_processor_toc("~/Desktop/0.raw.data/", "~/Desktop/1.pre-processed.data/")
 extractor_toc("~/Desktop/1.pre-processed.data/", "~/Desktop/2.extracted.data/")
 ```
@@ -73,6 +77,15 @@ max_col <- (2 + 3 + no_samples * 2) + 1
       
 ```
 
+As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
+
+- **samples**: `r samples`
+- **extra_samples**: `r extra_samples`
+- **max_cv**: `r max_cv`
+
+In case there are more extra samples, the last ones were be discarded.
+
+
 ## Read data and adjust different number of samples and cv
 ```{r}
 #| label: data
@@ -112,7 +125,7 @@ cat("Removed: ", before - after, "\n")
 cat("After  : ", after, "\n")
 ```
 
-## Rows where `conc == 0`
+## Remove Rows where `conc == 0`
 Here it gets tricky. There are cases, where either `conc_1 == 0` or `conc_2 == 0`, but `conc_3 != 0`, which results in a valid measurement, i.e. `conc != 0`. I would suggest to remove all rows, in which `conc == 0`
 
 ```{r}
@@ -154,6 +167,68 @@ Fixed two typos in the raw data. Now, it looks OK for me.
 
 - `LEEF_21_11_12`: "Analysis Name","LEEF_21_11_12 und 21_15_10A.adb"
 - `LEEF_22_01_19 und 22_01_21A`: All analysis for 22_01_21 are not valid
+
+## Set unrealistic small TC values to `NA`
+```{r}
+tc <- toc %>%
+  filter(inj_type == "TC")
+tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_TC)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  geom_vline(xintercept = 5, col = "red")
+```
+One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be traced to measuring errors in the machine.
+
+```{r}
+tc <- toc$inj_type == "TC"
+toc$conc_1[tc & sapply(toc$conc_1 < 5, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < 5, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < 5, isTRUE)] <- NA
+
+```
+
+Which are now gone
+
+```{r}
+tc <- toc %>%
+  filter(inj_type == "TC")
+tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_TC)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  geom_vline(xintercept = 5, col = "red")
+```
+
+# Set unrealistic small IC values to `NA`
+```{r}
+tc <- toc %>%
+  filter(inj_type == "IC")
+tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_IC)) + 
+  geom_vline(xintercept = 0.7, col = "red") +
+  stat_density(bw = 0.001, na.rm = TRUE)
+```
+One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be traced to measuring errors in the machine.
+
+```{r}
+tc <- toc$inj_type == "IC"
+toc$conc_1[tc & sapply(toc$conc_1 < 0.7, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < 0.7, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < 0.7, isTRUE)] <- NA
+
+```
+
+Which are now gone
+
+```{r}
+tc <- toc %>%
+  filter(inj_type == "TC")
+tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_TC)) + 
+  stat_density(bw = 0.001, na.rm = TRUE) +
+  geom_vline(xintercept = 5, col = "red")
+```
+
+
 
 ## Recalculate `conc` and TOC
 As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
@@ -218,96 +293,21 @@ toc <- toc %>%
 
 
 
-## Identify TOC measurements which are based on missing IC or TC measurements
-We have to identify and remove the TOC measurements which are using wrong measurements, i.e. TC or IC not available.
-
-The following rows need to be removed:
-```{r}
-inj_type <- list(
-  tc = toc %>%
-    filter(inj_type == "TC" & bottle != "") %>%
-    select(filename, timestamp, bottle, conc_tc = conc, id_tc = id),
-  ic = toc %>%
-    filter(inj_type == "IC" & bottle != "") %>%
-    select(filename, timestamp, bottle, conc_ic = conc, id_ic = id),
-  toc = toc%>%
-    filter(inj_type == "TOC" & bottle != "") %>%
-    select(filename, timestamp, bottle, conc_toc = conc, id_toc = id),
-  tn = toc%>%
-    filter(inj_type == "TN" & bottle != "") %>%
-    select(filename, timestamp, bottle, conc_tn = conc, id_tn = id)
-)
-x <- merge(inj_type$tc, inj_type$ic, by = c("filename", "timestamp", "bottle"), all = TRUE)
-x <- merge(x, inj_type$toc, by = c("filename", "timestamp", "bottle"), all = TRUE)
-x <- merge(x, inj_type$tn, by = c("filename", "timestamp", "bottle"), all = TRUE)
-x$TOC <- x$conc_tc - x$conc_ic
-
-i <- x[is.na(x$TOC),"id_toc"]
-toc[toc$id %in% i,]
-```
-These can be filtered out
-
-```{r}
-before <- nrow(toc)
-toc <- toc %>%
-  filter(!(id %in% i))
-after <- nrow(toc)
-cat("Before : ", before, "\n")
-cat("Removed: ", before - after, "\n")
-cat("After  : ", after, "\n")
-```
-
-
-
-
-## Filter out unrealistic small values
-```{r}
-toc %>% ggplot(aes(x=conc)) + 
-  stat_density(bw = 1) +
-  facet_grid(rows = vars(inj_type), scales = "free_y")
-```
-One can see for TC two peaks clearly separated. The values smaller than 5 will be discarded as they are unrealistically low and can be traced to measuring errors in the machine.
-
-```{r}
-toc %>% 
-  filter(!(inj_type == "TC" & conc < 5)) %>% 
-  ggplot(aes(x=conc)) + 
-  stat_density(bw = 1) +
-  facet_grid(rows = vars(inj_type), scales = "free_y")
-```
-These can be filtered out
-
-```{r}
-before <- nrow(toc)
-toc <- toc %>%
-  filter(!(inj_type == "TC" & conc < 5))
-after <- nrow(toc)
-cat("Before : ", before, "\n")
-cat("Removed: ", before - after, "\n")
-cat("After  : ", after, "\n")
-```
-
-As TOC is calculated as `TC - IC = TOC` we now have to re-calculate the TOC values
-
-```{r}
-
-```
 
 And the plot again after re-calculation of the TOC values
 ```{r}
 toc %>% 
-  filter(!(inj_type == "TC" & conc < 5)) %>% 
   ggplot(aes(x=conc)) + 
-  stat_density(bw = 1, na.rm = TRUE) +
+  stat_density(bw = 0.1, na.rm = TRUE) +
   facet_grid(rows = vars(inj_type), scales = "free_y")
 ```
 
+
 ## Add to database
+
+The toc is now added to the database
 ```{r}
 #| label: add_to_dv
-
-db <- "LEEF.RRD.TOC.sqlite"
-options(RRDdb = db)
 
 add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db, overwrite = TRUE)
 
@@ -317,36 +317,6 @@ toc$id <- 1:nrow(toc)
 ```
 
 
-
-## Plot before filtering
-Now let's look at the plots of the measurements per bottle per timestep
-```{r}
-plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
-plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
-plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
-```
-
-## Apply the filters to the database
-
-```{r}
-#| eval: TRUE
-conn <- DBI::dbConnect(
-  drv = RSQLite::SQLite(),
-  db = db
-)
-
-DBI::dbBegin(conn)
-DBI::dbWriteTable(
-  conn,
-  name = "toc__toc",
-  value = toc,
-  overwrite = TRUE,
-  append = FALSE
-)
-DBI::dbCommit(conn)
-
-DBI::dbDisconnect(conn)
-```
 
 
 ## Plot after filtering
@@ -358,56 +328,6 @@ plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
 ```
 
 
-## Distribution of the individual values per `inj_type`
-Calculate the densities
-```{r}
-conc <- list(
-  tc = list(
-    original = toc_original$conc[toc$inj_type == "TC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE),
-    removed  = toc$conc[toc$inj_type == "TC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE)
-  ),
-  toc = list(
-    original = toc_original$conc[toc$inj_type == "TOC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE),
-    removed  = toc$conc[toc$inj_type == "TOC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE)
-  ),
-  ic = list(
-    original = toc_original$conc[toc$inj_type == "IC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE),
-    removed  = toc$conc[toc$inj_type == "IC" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE)
-  ),  
-  tn = list(
-    original = toc_original$conc[toc$inj_type == "TN" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE),
-    removed  = toc$conc[toc$inj_type == "TN" | !is.null(toc$bottle)] |> density(bw = 0.1, na.rm = TRUE)
-  )
-)
-```
-
-### TC
-
-```{r}
-plot(conc$tc$removed, col = "red")
-lines(conc$tc$original)
-```
-
-### TOC
-
-```{r}
-plot(conc$toc$removed, col = "red")
-lines(conc$toc$original)
-```
-
-### IC
-
-```{r}
-plot(conc$tc$removed, col = "red")
-lines(conc$tc$original)
-```
-
-### TN
-
-```{r}
-plot(conc$tn$removed, col = "red")
-lines(conc$tn$original)
-```
 
 ## Number of measurements per `timestamp`, `bottle` and `inj_type`
 
@@ -428,7 +348,7 @@ dupl %>%
   knitr::kable()
 ```
 
-And some plots
+And some plots of the duplicate concentration values only
 ```{r}
 dat <- db_read_toc(db = db, duplicates = NULL) %>% 
   collect()
@@ -440,18 +360,6 @@ ids <- dat %>%
   filter(n > 1)
 ids <- c(ids$`min(id)`, ids$`max(id)`) |>
   unique()
-```
-
-```{r}
-pl <- dat %>% 
-  filter(id %in% ids) %>%
-  ggplot(aes(x=concentration)) + 
-  stat_density(bw = 1) +
-  facet_grid(rows = vars(type), scales = "free_y")
-pl
-```
-
-```{r}
 x <- dat %>% 
   filter(id %in% ids) %>%
   group_by(day, timestamp, bottle, type) %>%
@@ -459,6 +367,22 @@ x <- dat %>%
   mutate(mdiff = mac - mic)
 
  
+```
+### TN Duplicates
+
+```{r}
+pl <- x %>%
+  filter(type == "TN") %>%
+  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+  ggplot2::geom_point() +
+  ggplot2::xlab("Smaler concentration Value") +
+  ggplot2::ylab("Larger concentration Value")
+  
+ggMarginal(pl, type="histogram")
+```
+### TC Duplicates
+
+```{r}
 pl <- x %>%
   filter(type == "TC") %>%
   ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
@@ -468,6 +392,9 @@ pl <- x %>%
   
 ggMarginal(pl, type="histogram")
 ```
+
+
+### IC Duplicates
 
 ```{r}
 pl <- x %>%
@@ -479,6 +406,8 @@ pl <- x %>%
   
 ggMarginal(pl, type="histogram")
 ```
+
+### TOC Duplicates
 
 ```{r}
 pl <- x %>%
@@ -490,17 +419,5 @@ pl <- x %>%
   
 ggMarginal(pl, type="histogram")
 ```
-
-```{r}
-pl <- x %>%
-  filter(type == "IC") %>%
-  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
-  ggplot2::geom_point() +
-  ggplot2::xlab("Smaler concentration Value") +
-  ggplot2::ylab("Larger concentration Value")
-  
-ggMarginal(pl, type="histogram")
-```
-
 
 

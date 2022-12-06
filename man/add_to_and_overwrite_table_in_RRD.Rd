@@ -5,14 +5,14 @@
 \title{Add files to database}
 \usage{
 add_to_and_overwrite_table_in_RRD(
-  input,
+  toc,
   dbname,
   append = FALSE,
   overwrite = FALSE
 )
 }
 \arguments{
-\item{input}{directory from which to read the data}
+\item{toc}{the (\code{data.frame}) containing the toc data for the database}
 
 \item{dbname}{name and path to the database in which the data should be written}
 
