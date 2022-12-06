@@ -207,37 +207,47 @@ extractor_toc <- function(
 
       fn <- tools::file_path_sans_ext(basename(fn))
 
-      bottles <- sapply(
-        strsplit(data$identification, "\\."),
-        function(x){
-          if (length(x) < 3){
-            b <- NA
-          } else {
-            b <- x[[3]]
-            b <- gsub("^S", "b_", b)
+      if (gregexpr("S", data$identification) |> unlist() |> max() > 1){
+        ## LEEF-1 format
+        bottles <- sapply(
+          strsplit(data$identification, "\\."),
+          function(x){
+            if (length(x) < 3){
+              b <- NA
+            } else {
+              b <- x[[3]]
+              b <- gsub("^S", "b_", b)
+            }
+            return(b)
           }
-          return(b)
-        }
-      )
+        )
 
-      timestamps <- sapply(
-        strsplit(data$identification, "\\."),
-        function(x){
-          if (length(x) < 3){
-            timestamp <- NA
-          } else {
-            day <- x[[1]]
-            month <- x[[2]]
-            year <- ifelse(
-              as.integer(month) >= 9,
-              2021,
-              2022
-            )
-            timestamp <- paste0(year, month, day)
+        timestamps <- sapply(
+          strsplit(data$identification, "\\."),
+          function(x){
+            if (length(x) < 3){
+              timestamp <- NA
+            } else {
+              day <- x[[1]]
+              month <- x[[2]]
+              year <- ifelse(
+                as.integer(month) >= 9,
+                2021,
+                2022
+              )
+              timestamp <- paste0(year, month, day)
+            }
+            return(timestamp)
           }
-          return(timestamp)
-        }
-      )
+        )
+      } else if (gregexpr("S", data$identification) |> unlist() |> max() == 1){
+        3# LEEF-2 format
+        bottles <- substring(data$identification, 1, 3)
+        bottles <- gsub("^S", "b_", bottles)
+
+        timestamps <- substring(data$identification, 4, 11)
+        timestamps <- gsub("^S", "b_", timestamps)
+      }
 
       ad <- metadata[metadata$name=="date","value"]
       at <- metadata[metadata$name=="time","value"]
