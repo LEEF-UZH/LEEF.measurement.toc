@@ -1,5 +1,5 @@
 ---
-title: "Import and Filter TOC"
+title: "Import and Filter TOC LEEF-2"
 format: 
   html:
     toc: true
@@ -8,6 +8,8 @@ format:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
+    output-file: "Import and Filter TOC from LEEF-2"
+    output-ext:  "html"
 editor: source
 
 ---
@@ -30,7 +32,7 @@ options(dplyr.summarise.inform = FALSE)
 
 ```{r}
 
-db <- "~/Desktop/9.backend/LEEF.RRD.TOC.sqlite"
+db <- "~/Desktop/9.backend/LEEF-2.RRD.TOC.sqlite"
 options(RRDdb = db)
 
 pre_processor_toc("~/Desktop/0.raw.data/", "~/Desktop/1.pre-processed.data/")
@@ -352,6 +354,7 @@ And some plots of the duplicate concentration values only
 ```{r}
 dat <- db_read_toc(db = db, duplicates = NULL) %>% 
   collect()
+if (nrow(dat) > 0){
 dat$id <- 1:nrow(dat)
 ids <- dat %>% 
   filter(!is.na(bottle)) %>%
@@ -365,59 +368,66 @@ x <- dat %>%
   group_by(day, timestamp, bottle, type) %>%
   summarise(timestamp, bottle, type, mic = min(concentration), mac = max(concentration)) %>%
   mutate(mdiff = mac - mic)
-
- 
+}
 ```
 ### TN Duplicates
 
 ```{r}
-pl <- x %>%
-  filter(type == "TN") %>%
-  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
-  ggplot2::geom_point() +
-  ggplot2::xlab("Smaler concentration Value") +
-  ggplot2::ylab("Larger concentration Value")
+if (nrow(dat) > 0){
+  pl <- x %>%
+    filter(type == "TN") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
   
-ggMarginal(pl, type="histogram")
+  ggMarginal(pl, type="histogram")
+}
 ```
 ### TC Duplicates
 
 ```{r}
-pl <- x %>%
-  filter(type == "TC") %>%
-  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
-  ggplot2::geom_point() +
-  ggplot2::xlab("Smaler concentration Value") +
-  ggplot2::ylab("Larger concentration Value")
+if (nrow(dat) > 0){
+  pl <- x %>%
+    filter(type == "TC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
   
-ggMarginal(pl, type="histogram")
+  ggMarginal(pl, type="histogram")
+}
 ```
 
 
 ### IC Duplicates
 
 ```{r}
-pl <- x %>%
-  filter(type == "IC") %>%
-  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
-  ggplot2::geom_point() +
-  ggplot2::xlab("Smaler concentration Value") +
-  ggplot2::ylab("Larger concentration Value")
+if (nrow(dat) > 0){
+  pl <- x %>%
+    filter(type == "IC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
   
-ggMarginal(pl, type="histogram")
+  ggMarginal(pl, type="histogram")
+}
 ```
 
 ### TOC Duplicates
 
 ```{r}
-pl <- x %>%
-  filter(type == "TOC") %>%
-  ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
-  ggplot2::geom_point() +
-  ggplot2::xlab("Smaler concentration Value") +
-  ggplot2::ylab("Larger concentration Value")
+if (nrow(dat) > 0){
+  pl <- x %>%
+    filter(type == "TOC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
   
-ggMarginal(pl, type="histogram")
+  ggMarginal(pl, type="histogram")
+}
 ```
 
 

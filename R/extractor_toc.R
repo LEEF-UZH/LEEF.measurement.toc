@@ -72,10 +72,23 @@ extractor_toc <- function(
       metadata <- metadata[which(metadata != "" )]
       txt <- txt[-(1:secEnd)]
 
-      secEnd <- grep("\"Inj. Type\"", txt) - 1
+      secEnd <- grep("\"CurveNo\"", txt) - 1
+      if (length(secEnd) == 0){
+        secEnd <- grep("\"Inj. Type\"", txt) - 1
+        calThere <- FALSE
+      } else {
+        calThere <- TRUE
+      }
       parameter <- txt[1:secEnd]
       parameter <- parameter[which(parameter != "" )]
       txt <- txt[-(1:secEnd)]
+
+      if (calThere){
+        secEnd <- grep("\"Inj. Type\"", txt) - 1
+        calib <- txt[1:secEnd]
+        calib <- calib[which(calib != "" )]
+        txt <- txt[-(1:secEnd)]
+      }
 
       datatext <- txt
       datatext <- datatext[which(datatext != "" )]
@@ -88,7 +101,7 @@ extractor_toc <- function(
       ### END TODO CHECK
 
 
-      # Processing --------------------------------------------------------------
+      # Metadata --------------------------------------------------------------
 
 
       message("  |- Processing metadata ...")
@@ -103,7 +116,7 @@ extractor_toc <- function(
       metadata$name <- tolower(metadata$name)
 
 
-      # Read Parameter ----------------------------------------------
+      # Parameter ----------------------------------------------
 
 
       message("  |- Processing parameter ...")
@@ -117,7 +130,22 @@ extractor_toc <- function(
       colnames(parameter) <- tolower(colnames(parameter))
 
 
-      # Read actual data --------------------------------------------------------
+      # Calibration ----------------------------------------------
+
+      if (calThere){
+        message("  |- Processing calibration ...")
+
+        calib <- utils::read.csv(
+          text = calib,
+          header = TRUE,
+          stringsAsFactors = FALSE
+        )
+        colnames(parameter) <- gsub(" |/|\\.\\.|\\.", "_", colnames(parameter))
+        colnames(parameter) <- tolower(colnames(parameter))
+      }
+
+
+      # Actual data --------------------------------------------------------
 
 
       message("  |- Processing actual data ...")
@@ -231,9 +259,12 @@ extractor_toc <- function(
 
 
       message("  |- Saving files ...")
-      utils::write.csv( metadata,  file.path(tmpdir, paste0(fn, ".metadata.csv" )), row.names = FALSE)
-      utils::write.csv( parameter, file.path(tmpdir, paste0(fn, ".parameter.csv")), row.names = FALSE)
-      utils::write.csv( data,      file.path(tmpdir, paste0(fn, ".data.csv"     )), row.names = FALSE)
+      utils::write.csv( metadata,  file.path(tmpdir, paste0(fn, ".metadata.csv"   )), row.names = FALSE)
+      utils::write.csv( parameter, file.path(tmpdir, paste0(fn, ".parameter.csv"  )), row.names = FALSE)
+      if (calThere){
+        utils::write.csv( calib,     file.path(tmpdir, paste0(fn, ".calibration.csv")), row.names = FALSE)
+      }
+      utils::write.csv( data,      file.path(tmpdir, paste0(fn, ".data.csv"       )), row.names = FALSE)
     }
   )
   ##
