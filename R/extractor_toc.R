@@ -246,7 +246,6 @@ extractor_toc <- function(
         bottles <- gsub("^S", "b_", bottles)
 
         timestamps <- substring(data$identification, 4, 11)
-        timestamps <- gsub("^S", "b_", timestamps)
       }
 
       ad <- metadata[metadata$name=="date","value"]
