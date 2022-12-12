@@ -331,9 +331,9 @@ toc$id <- 1:nrow(toc)
 ## Plot after filtering
 Now let's look at the plots of the measurements per bottle per timestep
 ```{r}
-plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
-plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
-plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
+LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
+LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
 ```
 
 

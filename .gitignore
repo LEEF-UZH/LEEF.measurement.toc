@@ -2,24 +2,21 @@
 .Rhistory
 .RData
 .Ruserdata
-
 # knitr and R markdown default cache directories
 /*_cache/
 *_cache/
 /cache/
-
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
 .Rproj.user
-
 #
 temp
 tmp
-
 ## Example Data Folder
 0.raw.data
 1.pre-processed.data
 2.extracted.data
 3.archived.data
 9.backend
+.RDataTmp
