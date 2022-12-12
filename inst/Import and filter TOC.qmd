@@ -261,8 +261,14 @@ conc_ext <- function(c1, c2, c3, cv, max_cv){
       }
     )
   }
-  
+
+  cv_12 <- cv
+  cv_13 <- cvf(c1, c3)
+  cv_23 <- cvf(c2, c3)
+
   conc_org <- cv < max_cv
+
+  CHECK AND CHANGE TO USE MIN OF ALL TREE CV!!!
 
   conc_13 <- cvf(c1, c3) < max_cv
   conc_13[conc_org] <- FALSE
@@ -274,8 +280,8 @@ conc_ext <- function(c1, c2, c3, cv, max_cv){
   conc[] <- NA
   
   conc[which(conc_org)] <- rowMeans(data.frame(c1[which(conc_org)], c2[which(conc_org)]))
-  conc[which(conc_13) ] <- rowMeans(data.frame(c1[which(conc_13)],  c2[which(conc_13) ]))
-  conc[which(conc_23) ] <- rowMeans(data.frame(c1[which(conc_23)],  c2[which(conc_23) ]))
+  conc[which(conc_13) ] <- rowMeans(data.frame(c1[which(conc_13)],  c3[which(conc_13) ]))
+  conc[which(conc_23) ] <- rowMeans(data.frame(c2[which(conc_23)],  c3[which(conc_23) ]))
 
   return(conc)
 }
@@ -380,7 +386,7 @@ x <- dat %>%
 ### TN Duplicates
 
 ```{r}
-if (nrow(dat) > 0){
+if (nrow(x) > 0){
   pl <- x %>%
     filter(type == "TN") %>%
     ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
@@ -394,7 +400,7 @@ if (nrow(dat) > 0){
 ### TC Duplicates
 
 ```{r}
-if (nrow(dat) > 0){
+if (nrow(x) > 0){
   pl <- x %>%
     filter(type == "TC") %>%
     ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
@@ -410,7 +416,7 @@ if (nrow(dat) > 0){
 ### IC Duplicates
 
 ```{r}
-if (nrow(dat) > 0){
+if (nrow(x) > 0){
   pl <- x %>%
     filter(type == "IC") %>%
     ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
@@ -425,7 +431,7 @@ if (nrow(dat) > 0){
 ### TOC Duplicates
 
 ```{r}
-if (nrow(dat) > 0){
+if (nrow(x) > 0){
   pl <- x %>%
     filter(type == "TOC") %>%
     ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
