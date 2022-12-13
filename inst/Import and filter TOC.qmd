@@ -252,39 +252,46 @@ Now we calculate `conc`
 
 ```{r}
 #| label: calc_conc_cv
-conc_ext <- function(c1, c2, c3, cv, max_cv){
-  cvf <- function(x, y){
-    sapply(
-      1:length(x),
-      function(i){
-        sd(c(x[i], y[i])) / mean(c(x[i], y[i])) * 100
-      }
-    )
-  }
-
-  cv_12 <- cv
-  cv_13 <- cvf(c1, c3)
-  cv_23 <- cvf(c2, c3)
-
-  conc_org <- cv < max_cv
-
-  CHECK AND CHANGE TO USE MIN OF ALL TREE CV!!!
-
-  conc_13 <- cvf(c1, c3) < max_cv
-  conc_13[conc_org] <- FALSE
-  
-  conc_23 <- !conc_13
-  conc_23[conc_org] <- FALSE
-  
-  conc <- c1
-  conc[] <- NA
-  
-  conc[which(conc_org)] <- rowMeans(data.frame(c1[which(conc_org)], c2[which(conc_org)]))
-  conc[which(conc_13) ] <- rowMeans(data.frame(c1[which(conc_13)],  c3[which(conc_13) ]))
-  conc[which(conc_23) ] <- rowMeans(data.frame(c2[which(conc_23)],  c3[which(conc_23) ]))
-
-  return(conc)
+cvf <- function(x, y){
+  sapply(
+    1:length(x),
+    function(i){
+      sd(c(x[i], y[i])) / mean(c(x[i], y[i])) * 100
+    }
+  )
 }
+
+
+toc$cv_12 <- cvf(toc$conc_1, toc$conc_2)
+toc$cv_13 <- cvf(toc$conc_1, toc$conc_3)
+toc$cv_23 <- cvf(toc$conc_2, toc$conc_3)
+
+toc$conc_12 <- rowMeans(toc[,c("conc_1", "conc_2")])
+toc$conc_13 <- rowMeans(toc[,c("conc_1", "conc_3")])
+toc$conc_23 <- rowMeans(toc[,c("conc_2", "conc_3")])
+
+
+
+apply(
+  toc,
+  1,
+  function(x){
+    
+    TODO
+    
+    if (isTRUE(x["cv_12"] < max_cv)) {
+      return(mean(x["conc_1"], x["conc_2"]))
+    } else {
+      sel <- which(x == min(c(x["cv_12"], x["cv_13"], x["cv_23"]), na.rm = TRUE))
+      if (length(sel) == 0) {return(NA)}
+      if (sel == 1) {return(mean(x["conc_1"], x["conc_2"]))}
+      if (sel == 2) {return(mean(x["conc_1"], x["conc_3"]))}
+      if (sel == 3) {return(mean(x["conc_2"], x["conc_3"]))} else {return(NA)}
+    }
+  }
+)
+
+
 
 toc$conc_old <- toc$conc
 toc$conc <- conc_ext(toc$conc_1, toc$conc_2, toc$conc_3, toc$cv, max_cv)
