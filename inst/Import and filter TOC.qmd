@@ -1,5 +1,5 @@
 ---
-title: "Import and Filter TOC LEEF-2"
+title: "Import and Filter TOC LEEF-1"
 format: 
   html:
     toc: true
@@ -8,11 +8,13 @@ format:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-dir: "/Volumes/LEEF/0.TOC/LEEF-2/"
-    output-file: "Import and Filter TOC from LEEF-2"
+    output-dir: "/Volumes/LEEF/0.TOC/LEEF-1/"
+    output-file: "Import and Filter TOC from LEEF-1"
     output-ext:  "html"
 editor: source
-
+params:
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-1/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-1/9.backend/LEEF.RRD.TOC.sqlite"
 ---
 
 ## Some preliminary setup
@@ -33,9 +35,9 @@ options(dplyr.summarise.inform = FALSE)
 
 ```{r}
 # root_folder <- "/Volumes/LEEF/0.TOC/LEEF-1/"
-root_folder <- "/Volumes/LEEF/0.TOC/LEEF-2/"
+root_folder <- params$root_folder
 
-db <- file.path(root_folder, "9.backend", "LEEF-2.RRD.TOC.sqlite")
+db <- params$db
 options(RRDdb = db)
 
 pre_processor_toc(file.path(root_folder, "0.raw.data"), file.path(root_folder, "1.pre-processed.data"))
@@ -186,7 +188,7 @@ tc %>% ggplot(aes(x=conc_TC)) +
   stat_density(bw = 0.1, na.rm = TRUE) +
   geom_vline(xintercept = 5, col = "red")
 ```
-One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be traced to measuring errors in the machine.
+One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
 
 ```{r}
 tc <- toc$inj_type == "TC"
@@ -216,7 +218,7 @@ tc %>% ggplot(aes(x=conc_IC)) +
   geom_vline(xintercept = 0.7, col = "red") +
   stat_density(bw = 0.001, na.rm = TRUE)
 ```
-One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be traced to measuring errors in the machine.
+One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
 
 ```{r}
 tc <- toc$inj_type == "IC"
@@ -248,7 +250,7 @@ In case there are more extra samples, the last ones were be discarded.
 
 In addition, we have calculate the TOC, which is `TOC = TC - IC`
 
-Now we calculate `conc`
+### Calculate `conc`
 
 ```{r}
 #| label: calc_conc_cv
@@ -272,30 +274,27 @@ toc$conc_23 <- rowMeans(toc[,c("conc_2", "conc_3")])
 
 
 
-apply(
+toc$conc <- apply(
   toc,
   1,
   function(x){
-    
-    TODO
-    
-    if (isTRUE(x["cv_12"] < max_cv)) {
-      return(mean(x["conc_1"], x["conc_2"]))
+    if (isTRUE(x[["cv_12"]] < max_cv)) {
+      return(mean(as.numeric(x[["conc_1"]]), as.numeric(x[["conc_2"]])))
     } else {
-      sel <- which(x == min(c(x["cv_12"], x["cv_13"], x["cv_23"]), na.rm = TRUE))
+      sel <- suppressWarnings( which(x == min(as.numeric(x[["cv_12"]]), as.numeric(x[["cv_13"]]), as.numeric(x[["cv_23"]]), na.rm = TRUE)) )
       if (length(sel) == 0) {return(NA)}
-      if (sel == 1) {return(mean(x["conc_1"], x["conc_2"]))}
-      if (sel == 2) {return(mean(x["conc_1"], x["conc_3"]))}
-      if (sel == 3) {return(mean(x["conc_2"], x["conc_3"]))} else {return(NA)}
+      if (sel == 1) {return(mean(as.numeric(x[["conc_1"]]), as.numeric(x[["conc_2"]])))}
+      if (sel == 2) {return(mean(as.numeric(x[["conc_1"]]), as.numeric(x[["conc_3"]])))}
+      if (sel == 3) {return(mean(as.numeric(x[["conc_2"]]), as.numeric(x[["conc_3"]])))} else {return(NA)}
     }
   }
 )
+```
 
 
+### Calculate TOC
 
-toc$conc_old <- toc$conc
-toc$conc <- conc_ext(toc$conc_1, toc$conc_2, toc$conc_3, toc$cv, max_cv)
-
+```{r}
 i <- which(toc$inj_type == "TOC")
 toc$conc[i] <- NA
 
