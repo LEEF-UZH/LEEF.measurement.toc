@@ -8,13 +8,13 @@ format:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-dir: "/Volumes/LEEF/0.TOC/LEEF-1/"
-    output-file: "Import and Filter TOC from LEEF-1"
+    output-file: "Import and Filter TOC from LEEF-2"
     output-ext:  "html"
 editor: source
 params:
-  root_folder: "/Volumes/LEEF/0.TOC/LEEF-1/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-1/9.backend/LEEF.RRD.TOC.sqlite"
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF-2.RRD.sqlite"
+  LEEF: LEEF_2
 ---
 
 ## Some preliminary setup
@@ -34,18 +34,20 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r}
-# root_folder <- "/Volumes/LEEF/0.TOC/LEEF-1/"
+#| label: pre_process
+#| 
 root_folder <- params$root_folder
 
 db <- params$db
 options(RRDdb = db)
 
 pre_processor_toc(file.path(root_folder, "0.raw.data"), file.path(root_folder, "1.pre-processed.data"))
+```
+
+```{r}
+#| label: extract
+#| 
 extractor_toc(file.path(root_folder, "1.pre-processed.data"), file.path(root_folder, "2.extracted.data"))
-
-# pre_processor_toc("/Volumes/LEEF/0.TOC/LEEF-2/0.raw.data/", "/Volumes/LEEF/0.TOC/LEEF-2/1.pre-processed.data/")
-# extractor_toc("/Volumes/LEEF/0.TOC/LEEF-2/1.pre-processed.data//", "/Volumes/LEEF/0.TOC/LEEF-2/2.extracted.data//")
-
 ```
 
 ## Read parameter and data files and determine CV and number extra measurements
@@ -278,7 +280,7 @@ toc$conc <- apply(
   toc,
   1,
   function(x){
-    if (isTRUE(x[["cv_12"]] < max_cv)) {
+    if (isTRUE(as.numeric(x[["cv_12"]]) < max_cv)) {
       return(mean(as.numeric(x[["conc_1"]]), as.numeric(x[["conc_2"]])))
     } else {
       sel <- suppressWarnings( which(x == min(as.numeric(x[["cv_12"]]), as.numeric(x[["cv_13"]]), as.numeric(x[["cv_23"]]), na.rm = TRUE)) )
@@ -328,7 +330,7 @@ toc %>%
 
 The toc is now added to the database
 ```{r}
-#| label: add_to_dv
+#| label: add_to_db
 
 add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db, overwrite = TRUE)
 
@@ -343,9 +345,19 @@ toc$id <- 1:nrow(toc)
 ## Plot after filtering
 Now let's look at the plots of the measurements per bottle per timestep
 ```{r}
-LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
-LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
-LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+#| label: plot_timestamps
+if (params$LEEF == "LEEF_1") {
+  p1 <- plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
+  p2 <- plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
+  p3 <- plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+} else {
+  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
+  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
+  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+}
+p1
+p2
+p3
 ```
 
 
@@ -449,4 +461,15 @@ if (nrow(x) > 0){
 }
 ```
 
+### Final diagnostic report
+```{r}
+try(
+  report_diagnostic(
+    db = params$db,  
+    template = params$LEEF,
+    suffix = "TOC_added", 
+    format = "html"
+  )
+)
+```
 
