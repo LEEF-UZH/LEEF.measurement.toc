@@ -8,13 +8,16 @@ format:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-file: "Import and Filter TOC from LEEF-2"
+    output-file: "Import and Filter TOC from LEEF-1"
     output-ext:  "html"
 editor: source
+execute:
+  error: true
+  cache: false
 params:
-  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF-2.RRD.sqlite"
-  LEEF: LEEF_2
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-1/"
+  db: "/Volumes/LEEF/0.RRD/LEEF-1/LEEF.RRD.sqlite"
+  LEEF: LEEF_1
 ---
 
 ## Some preliminary setup
@@ -182,9 +185,13 @@ Fixed two typos in the raw data. Now, it looks OK for me.
 - `LEEF_22_01_19 und 22_01_21A`: All analysis for 22_01_21 are not valid
 
 ## Set unrealistic small TC values to `NA`
+
+Here only samples from bottles were included in the filtering rules.
 ```{r}
 tc <- toc %>%
-  filter(inj_type == "TC")
+  filter(inj_type == "TC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle))
 tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_TC)) + 
   stat_density(bw = 0.1, na.rm = TRUE) +
@@ -192,53 +199,146 @@ tc %>% ggplot(aes(x=conc_TC)) +
 ```
 One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
 
+Plot the previous plot zoomed in to conc <= 10 for each bottle
+
+### conc_1
 ```{r}
-tc <- toc$inj_type == "TC"
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_1)) + 
+  geom_vline(xintercept = 5, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_2
+```{r}
+#| fig-height: 40
+
+toc %>%
+  filter(inj_type == "TC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_2)) + 
+  geom_vline(xintercept = 5, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_3
+```{r}
+#| fig-height: 40
+
+toc %>%
+  filter(inj_type == "TC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_3)) + 
+  geom_vline(xintercept = 5, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+```{r}
+tc <- (toc$inj_type == "TC") & (toc$bottle != "H2O") & (!is.na(toc$bottle))
 toc$conc_1[tc & sapply(toc$conc_1 < 5, isTRUE)] <- NA
 toc$conc_2[tc & sapply(toc$conc_2 < 5, isTRUE)] <- NA
 toc$conc_3[tc & sapply(toc$conc_3 < 5, isTRUE)] <- NA
 
 ```
 
-Which are now gone
+### Which are now gone
 
 ```{r}
 tc <- toc %>%
-  filter(inj_type == "TC")
+  filter(inj_type == "TC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle))
 tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_TC)) + 
   stat_density(bw = 0.1, na.rm = TRUE) +
   geom_vline(xintercept = 5, col = "red")
 ```
 
-# Set unrealistic small IC values to `NA`
+## Set unrealistic small IC values to `NA`
+
+Here only samples from bottles were included in the filtering rules.
 ```{r}
 tc <- toc %>%
-  filter(inj_type == "IC")
+  filter(inj_type == "IC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle))
 tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_IC)) + 
-  geom_vline(xintercept = 0.7, col = "red") +
+  geom_vline(xintercept = 0.3, col = "red") +
   stat_density(bw = 0.001, na.rm = TRUE)
 ```
-One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
+One can see for TC two peaks clearly separated. The values smaller than 0.3 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
+
+Plot the previous plot zoomed in to conc <= 3 for each bottle
+
+### conc_1
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_1)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_2
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_2)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_3
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc_3)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
 
 ```{r}
-tc <- toc$inj_type == "IC"
-toc$conc_1[tc & sapply(toc$conc_1 < 0.7, isTRUE)] <- NA
-toc$conc_2[tc & sapply(toc$conc_2 < 0.7, isTRUE)] <- NA
-toc$conc_3[tc & sapply(toc$conc_3 < 0.7, isTRUE)] <- NA
+tc <- (toc$inj_type == "IC") & (toc$bottle != "H2O") & (!is.na(toc$bottle))
+toc$conc_1[tc & sapply(toc$conc_1 < 0.3, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < 0.3, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < 0.3, isTRUE)] <- NA
 
 ```
 
-Which are now gone
+### Which are now gone
 
 ```{r}
 tc <- toc %>%
-  filter(inj_type == "TC")
-tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
-tc %>% ggplot(aes(x=conc_TC)) + 
-  stat_density(bw = 0.001, na.rm = TRUE) +
-  geom_vline(xintercept = 5, col = "red")
+  filter(inj_type == "IC") %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle))
+tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_IC)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.001, na.rm = TRUE)
 ```
 
 
@@ -317,13 +417,77 @@ toc <- toc %>%
 
 
 
-And the plot again after re-calculation of the TOC values
+### Plot after re-calculation of the TOC values (without H2O and other non-bottle samples)
 ```{r}
-toc %>% 
+toc %>%   
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>%
   ggplot(aes(x=conc)) + 
   stat_density(bw = 0.1, na.rm = TRUE) +
   facet_grid(rows = vars(inj_type), scales = "free_y")
 ```
+
+
+## Plot the measured concentreation per bottle of all samples
+
+
+```{r}
+#| fig-height: 20
+toc %>%
+  filter(bottle != "H2O") %>%
+  filter(!is.na(bottle)) %>% 
+  ggplot(aes(x=conc)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_grid(rows = vars(bottle), cols = vars(inj_type), scales = "free_y")
+```
+
+### TC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 5, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### IC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### TOC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TOC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 4.7, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### TN
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TN") %>%
+  ggplot(aes(x=conc)) +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
 
 
 ## Add to database
@@ -332,7 +496,7 @@ The toc is now added to the database
 ```{r}
 #| label: add_to_db
 
-add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db, overwrite = TRUE)
+add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db)
 
 toc_original <- toc
 
@@ -346,6 +510,7 @@ toc$id <- 1:nrow(toc)
 Now let's look at the plots of the measurements per bottle per timestep
 ```{r}
 #| label: plot_timestamps
+
 if (params$LEEF == "LEEF_1") {
   p1 <- plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
   p2 <- plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))

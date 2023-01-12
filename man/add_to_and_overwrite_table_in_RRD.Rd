@@ -4,25 +4,12 @@
 \alias{add_to_and_overwrite_table_in_RRD}
 \title{Add files to database}
 \usage{
-add_to_and_overwrite_table_in_RRD(
-  toc,
-  dbname,
-  append = FALSE,
-  overwrite = FALSE
-)
+add_to_and_overwrite_table_in_RRD(toc, dbname)
 }
 \arguments{
 \item{toc}{the (\code{data.frame}) containing the toc data for the database}
 
 \item{dbname}{name and path to the database in which the data should be written}
-
-\item{append}{if \code{TRUE}, data will be appended to the existing table.
-If \code{FALSE} (the default), an error will be raised if the table exists already,
-unless \code{overwrite = TRUE}}
-
-\item{overwrite}{if \code{TRUE}, an existing table will be overwriten.
-If \code{FALSE} (the default), an error will be raised if the table exists already,
-unless \code{append = TRUE}}
 }
 \description{
 Add files to database

@@ -2,12 +2,6 @@
 #'
 #' @param toc the (\code{data.frame}) containing the toc data for the database
 #' @param dbname name and path to the database in which the data should be written
-#' @param append if \code{TRUE}, data will be appended to the existing table.
-#'   If \code{FALSE} (the default), an error will be raised if the table exists already,
-#'   unless \code{overwrite = TRUE}
-#' @param overwrite if \code{TRUE}, an existing table will be overwriten.
-#'   If \code{FALSE} (the default), an error will be raised if the table exists already,
-#'   unless \code{append = TRUE}
 #'
 #' @return
 #'
@@ -18,9 +12,7 @@
 #' @examples
 add_to_and_overwrite_table_in_RRD <- function(
     toc,
-    dbname,
-    append = FALSE,
-    overwrite = FALSE
+    dbname
 ){
 
   conn <- NULL
