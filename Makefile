@@ -32,7 +32,7 @@ READMEHTML = Readme.html
 
 #############
 
-all: readme docs vignettes build
+all: docs build install drat
 
 #############
 
@@ -84,7 +84,7 @@ build:
 
 ####
 
-drat: docs build
+drat: 
 	cd 
 	@Rscript -e "drat::insertPackage('./../$(PKGNAME)_$(PKGVERS).tar.gz', repodir = './../../drat/', commit = TRUE)"
 
@@ -97,7 +97,7 @@ build-cran:
 
 ####
 
-install: build
+install: 
 	cd ..;\
 	R CMD INSTALL $(PKGNAME)_$(PKGVERS).tar.gz
 

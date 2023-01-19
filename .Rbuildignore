@@ -13,3 +13,4 @@
 ^1\.pre-processed\.data$
 ^2\.extracted\.data$
 ^codemeta\.json$
+^\\.RDataTmp
