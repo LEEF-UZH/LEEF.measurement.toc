@@ -1,5 +1,5 @@
 ---
-title: "Import and Filter TOC LEEF-1"
+title: "Import and Filter TOC LEEF-2"
 format: 
   html:
     toc: true
@@ -8,16 +8,16 @@ format:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-file: "Import and Filter TOC from LEEF-1"
+    output-file: "Import and Filter TOC from LEEF-2"
     output-ext:  "html"
 editor: source
 execute:
   error: true
   cache: false
 params:
-  root_folder: "~/Desktop/"
-  db: "/Volumes/LEEF/0.RRD/LEEF-1/LEEF.RRD.sqlite"
-  LEEF: LEEF_1
+  root_folder: "~/Desktop/TOC LEEF-2"
+  db: "~/Desktop/TOC LEEF-2/LEEF-2.RRD.sqlite"
+  LEEF: LEEF_2
 ---
 
 ## Some preliminary setup
@@ -39,20 +39,17 @@ options(dplyr.summarise.inform = FALSE)
 ```{r}
 #| label: pre_process
 
-root_folder <- params$root_folder
+options(RRDdb =  params$db)
 
-db <- params$db
-options(RRDdb = db)
-
-unlink(file.path(root_folder, "1.pre-processed.data", "toc"))
-pre_processor_toc(file.path(root_folder, "0.raw.data"), file.path(root_folder, "1.pre-processed.data"))
+unlink(file.path(params$root_folder, "1.pre-processed.data", "toc"))
+pre_processor_toc(file.path(params$root_folder, "0.raw.data"), file.path(params$root_folder, "1.pre-processed.data"))
 ```
 
 ```{r}
 #| label: extract
 
-unlink(file.path(root_folder, "2.extracted.data", "toc"))
-extractor_toc(file.path(root_folder, "1.pre-processed.data"), file.path(root_folder, "2.extracted.data"))
+unlink(file.path(params$root_folder, "2.extracted.data", "toc"))
+extractor_toc(file.path(params$root_folder, "1.pre-processed.data"), file.path(params$root_folder, "2.extracted.data"))
 ```
 
 ## Read parameter and data files and determine CV and number extra measurements
@@ -60,7 +57,7 @@ extractor_toc(file.path(root_folder, "1.pre-processed.data"), file.path(root_fol
 #| label: parameter
 
 fns <- sapply(
-  list.files(file.path(root_folder, "2.extracted.data", "toc"), "\\.data\\.", full.names = FALSE),
+  list.files(file.path(params$root_folder, "2.extracted.data", "toc"), "\\.data\\.", full.names = FALSE),
   function(fn){
     x <- strsplit(fn, "\\.")[[1]][[1]]
   }
@@ -69,8 +66,8 @@ fns <- sapply(
 data <- lapply(
     fns,
     function(fn){
-      p <- read.csv(file.path(root_folder, "2.extracted.data", "toc", paste(fn, "parameter", "csv", sep = ".")))
-      d <- read.csv(file.path(root_folder, "2.extracted.data", "toc", paste(fn, "data", "csv", sep = ".")))
+      p <- read.csv(file.path(params$root_folder, "2.extracted.data", "toc", paste(fn, "parameter", "csv", sep = ".")))
+      d <- read.csv(file.path(params$root_folder, "2.extracted.data", "toc", paste(fn, "data", "csv", sep = ".")))
       return(list(
         data = d, 
         parameter = p, 
@@ -159,10 +156,10 @@ toc %>%
 These can be filtered out
 
 ```{r}
-unlink(file.path(root_folder, "2.extracted.data", "toc_val_samples.csv"))
+unlink(file.path(params$root_folder, "2.extracted.data", "toc_val_samples.csv"))
 toc %>%
   filter(identification == "H2O" | identification == "2.5mg/lIC") %>%
-write.csv(file = file.path(root_folder, "2.extracted.data", "toc_val_samples.csv"))
+write.csv(file = file.path(params$root_folder, "2.extracted.data", "toc_val_samples.csv"))
   
 before <- nrow(toc)
 toc <- toc %>%
@@ -520,7 +517,7 @@ The toc is now added to the database
 ```{r}
 #| label: add_to_db
 
-add_to_and_overwrite_table_in_RRD(toc = toc, dbname = db)
+add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
 
 toc_original <- toc
 
@@ -536,13 +533,13 @@ Now let's look at the plots of the measurements per bottle per timestep
 #| label: plot_timestamps
 
 if (params$LEEF == "LEEF_1") {
-  p1 <- plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
-  p2 <- plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
-  p3 <- plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+  p1 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TC", "TOC"))
+  p2 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
+  p3 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
 } else {
-  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TC", "TOC"))
-  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("IC"))
-  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = db, c("TN"))
+  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TC", "TOC"))
+  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
+  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
 }
 p1
 p2
@@ -572,7 +569,7 @@ dupl %>%
 
 And some plots of the duplicate concentration values only
 ```{r}
-dat <- db_read_toc(db = db, duplicates = NULL) %>% 
+dat <- db_read_toc(db =  params$db, duplicates = NULL) %>% 
   collect()
 if (nrow(dat) > 0){
 dat$id <- 1:nrow(dat)
@@ -650,14 +647,17 @@ if (nrow(x) > 0){
 }
 ```
 
-### Final diagnostic report
+## Final diagnostic report
 ```{r}
+#| label: DiagnosticReport
+options(knitr.duplicate.label = "allow")
 try(
   report_diagnostic(
     db = params$db,  
     template = params$LEEF,
     suffix = "TOC_added", 
-    format = "html"
+    format = "html",
+    lastDays = 7
   )
 )
 ```

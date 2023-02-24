@@ -32,7 +32,7 @@ READMEHTML = Readme.html
 
 #############
 
-all: docs build install drat
+all: doc metadata build install drat
 
 #############
 
@@ -62,9 +62,13 @@ deps:
 
 ####
 
-docs:
-	Rscript -e "devtools::document(roclets = c('rd', 'collate', 'namespace', 'vignette'))"
+metadata:
+		Rscript -e "devtools::document(roclets = c('rd', 'collate', 'namespace', 'vignette'))"
+
+doc:
 	Rscript -e "codemetar::write_codemeta()"
+
+docs: doc metadata
 
 ####
 
@@ -84,11 +88,11 @@ build:
 
 ####
 
-drat: 
-	cd 
+drat:
+	cd
 	@Rscript -e "drat::insertPackage('./../$(PKGNAME)_$(PKGVERS).tar.gz', repodir = './../../drat/', commit = TRUE)"
 
-	
+
 ####
 
 build-cran:
@@ -97,7 +101,7 @@ build-cran:
 
 ####
 
-install: 
+install:
 	cd ..;\
 	R CMD INSTALL $(PKGNAME)_$(PKGVERS).tar.gz
 
