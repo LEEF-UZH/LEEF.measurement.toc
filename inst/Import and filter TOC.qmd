@@ -519,6 +519,8 @@ The toc is now added to the database
 
 add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
 
+saveRDS(toc, file.path(params$root_folder, "toc.rds"))
+
 toc_original <- toc
 
 toc$id <- 1:nrow(toc)
