@@ -12,12 +12,14 @@ format:
     output-ext:  "html"
 editor: source
 execute:
-  error: true
+  error: false
   cache: false
 params:
-  root_folder: "~/Desktop/TOC LEEF-2"
-  db: "~/Desktop/TOC LEEF-2/LEEF-2.RRD.sqlite"
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-2//LEEF-2.RRD.sqlite"
   LEEF: LEEF_2
+  min_TC: 5
+  min_IC: 0.3
 ---
 
 ## Some preliminary setup
@@ -38,6 +40,7 @@ options(dplyr.summarise.inform = FALSE)
 
 ```{r}
 #| label: pre_process
+#| eval: true
 
 options(RRDdb =  params$db)
 
@@ -47,6 +50,7 @@ pre_processor_toc(file.path(params$root_folder, "0.raw.data"), file.path(params$
 
 ```{r}
 #| label: extract
+#| eval: true
 
 unlink(file.path(params$root_folder, "2.extracted.data", "toc"))
 extractor_toc(file.path(params$root_folder, "1.pre-processed.data"), file.path(params$root_folder, "2.extracted.data"))
@@ -55,6 +59,7 @@ extractor_toc(file.path(params$root_folder, "1.pre-processed.data"), file.path(p
 ## Read parameter and data files and determine CV and number extra measurements
 ```{r}
 #| label: parameter
+
 
 fns <- sapply(
   list.files(file.path(params$root_folder, "2.extracted.data", "toc"), "\\.data\\.", full.names = FALSE),
@@ -84,7 +89,15 @@ sapply(data, "[[", "extra_samples") |> plot(ylab = "extra_samples") |> print()
 sapply(data, "[[", "max_cv") |> plot(ylab = "max_cv") |> print()
 
 samples <- sapply(data, "[[", "samples") |> min()
-extra_samples <- sapply(data, "[[", "extra_samples") |> min()
+
+if (params$LEEF == "LEEF_1") {
+  extra_samples <- sapply(data, "[[", "extra_samples") |> min()
+} else if (params$LEEF == "LEEF_2") {
+  extra_samples <- sapply(data, "[[", "extra_samples") |> max()
+} else {
+  stop("Unsopported `params$LEEF` value.", " Only `LEEF_1` and `LEEF_2` are curerently supported!")
+}
+
 max_cv <- sapply(data, "[[", "max_cv") |> max()
 
 no_samples <- samples + extra_samples
@@ -107,7 +120,14 @@ In case there are more extra samples, the last ones were be discarded.
 toc <- lapply(
   data,
   function(x){
-    result <- x$data[,1:max_col]
+    result <- x$data[,1:min(max_col, ncol(x$data))]
+    if (ncol(x$data) < max_col) {
+      sn <- paste0("conc_", 1:(extra_samples + samples))    
+      snm <- sn[!(sn %in% names(result))]
+      for (i in snm){
+        result[,snm] <- NA
+      }
+    }
     return(result)
   }
 ) |> do.call(what = rbind)
@@ -215,7 +235,7 @@ Plot the previous plot zoomed in to conc <= 10 for each bottle
 toc %>%
   filter(inj_type == "TC") %>%
   ggplot(aes(x=conc_1)) + 
-  geom_vline(xintercept = 5, col = "red") +
+  geom_vline(xintercept = params$min_TC, col = "red") +
   stat_density(bw = 0.1, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
@@ -227,7 +247,7 @@ toc %>%
 toc %>%
   filter(inj_type == "TC") %>%
   ggplot(aes(x=conc_2)) + 
-  geom_vline(xintercept = 5, col = "red") +
+  geom_vline(xintercept = params$min_TC, col = "red") +
   stat_density(bw = 0.1, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
@@ -239,16 +259,16 @@ toc %>%
 toc %>%
   filter(inj_type == "TC") %>%
   ggplot(aes(x=conc_3)) + 
-  geom_vline(xintercept = 5, col = "red") +
+  geom_vline(xintercept = params$min_TC, col = "red") +
   stat_density(bw = 0.1, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
 
 ```{r}
 tc <- (toc$inj_type == "TC")
-toc$conc_1[tc & sapply(toc$conc_1 < 5, isTRUE)] <- NA
-toc$conc_2[tc & sapply(toc$conc_2 < 5, isTRUE)] <- NA
-toc$conc_3[tc & sapply(toc$conc_3 < 5, isTRUE)] <- NA
+toc$conc_1[tc & sapply(toc$conc_1 < params$min_TC, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < params$min_TC, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < params$min_TC, isTRUE)] <- NA
 
 ```
 
@@ -273,12 +293,13 @@ tc <- toc %>%
 tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% 
   ggplot(aes(x=conc_IC)) + 
-  geom_vline(xintercept = 0.2, col = "red") +
+  geom_vline(xintercept = params$min_IC, col = "red") +
   stat_density(bw = 0.001, na.rm = TRUE)
 ```
 One can see for TC two peaks clearly separated. The values smaller than 0.3 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
 
 Plot the previous plot zoomed in to conc <= 3 for each bottle
+
 
 ### conc_1
 ```{r}
@@ -286,7 +307,7 @@ Plot the previous plot zoomed in to conc <= 3 for each bottle
 toc %>%
   filter(inj_type == "IC") %>%
   ggplot(aes(x=conc_1)) + 
-  geom_vline(xintercept = 0.2, col = "red") +
+  geom_vline(xintercept = params$min_IC, col = "red") +
   stat_density(bw = 0.01, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
@@ -297,7 +318,7 @@ toc %>%
 toc %>%
   filter(inj_type == "IC") %>%
   ggplot(aes(x=conc_2)) + 
-  geom_vline(xintercept = 0.3, col = "red") +
+  geom_vline(xintercept = params$min_IC, col = "red") +
   stat_density(bw = 0.01, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
@@ -308,7 +329,7 @@ toc %>%
 toc %>%
   filter(inj_type == "IC") %>%
   ggplot(aes(x=conc_3)) + 
-  geom_vline(xintercept = 0.3, col = "red") +
+  geom_vline(xintercept = params$min_IC, col = "red") +
   stat_density(bw = 0.01, na.rm = TRUE) +
   facet_wrap(~bottle, ncol = 1, scales = "free_y")
 ```
@@ -316,9 +337,9 @@ toc %>%
 
 ```{r}
 tc <- (toc$inj_type == "IC")
-toc$conc_1[tc & sapply(toc$conc_1 < 0.3, isTRUE)] <- NA
-toc$conc_2[tc & sapply(toc$conc_2 < 0.3, isTRUE)] <- NA
-toc$conc_3[tc & sapply(toc$conc_3 < 0.3, isTRUE)] <- NA
+toc$conc_1[tc & sapply(toc$conc_1 < params$min_IC, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < params$min_IC, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < params$min_IC, isTRUE)] <- NA
 
 ```
 
@@ -329,7 +350,7 @@ tc <- toc %>%
   filter(inj_type == "IC")
 tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_IC)) + 
-  geom_vline(xintercept = 0.3, col = "red") +
+  geom_vline(xintercept = params$min_IC, col = "red") +
   stat_density(bw = 0.001, na.rm = TRUE)
 ```
 
@@ -517,9 +538,9 @@ The toc is now added to the database
 ```{r}
 #| label: add_to_db
 
-add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
-
 saveRDS(toc, file.path(params$root_folder, "toc.rds"))
+
+add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
 
 toc_original <- toc
 
