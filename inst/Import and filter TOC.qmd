@@ -16,7 +16,7 @@ execute:
   cache: false
 params:
   root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-2//LEEF-2.RRD.sqlite"
+  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF-2.RRD.sqlite"
   LEEF: LEEF_2
   min_TC: 5
   min_IC: 0.3
