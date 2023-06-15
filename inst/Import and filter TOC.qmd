@@ -1,6 +1,6 @@
 ---
-title: "Import and Filter TOC LEEF-2"
-format: 
+title: "Import and Filter TOC LEEF-1"
+output: 
   html:
     toc: true
     toc-location: left
@@ -15,9 +15,9 @@ execute:
   error: false
   cache: false
 params:
-  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF-2.RRD.sqlite"
-  LEEF: LEEF_2
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-1/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-1/LEEF.RRD.sqlite"
+  LEEF: LEEF_1
   min_TC: 5
   min_IC: 0.3
 ---
@@ -28,6 +28,9 @@ params:
 
 ```{r}
 #| label: setup
+if (!exists("params")){
+   params <- rmarkdown::yaml_front_matter('~/Documents_Local/git/LEEF/measurements/LEEF.measurement.toc/inst/Import and filter TOC.qmd')$params
+}
 
 library(LEEF.analysis)
 library(LEEF.measurement.toc)
