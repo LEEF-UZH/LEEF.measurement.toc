@@ -8,7 +8,7 @@ output:
     code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-file: "Import and Filter TOC from LEEF-2"
+    output-file: "Import and Filter TOC from LEEF-1"
     output-ext:  "html"
 editor: source
 execute:
@@ -29,7 +29,7 @@ params:
 ```{r}
 #| label: setup
 if (!exists("params")){
-   params <- rmarkdown::yaml_front_matter('~/Documents_Local/git/LEEF/measurements/LEEF.measurement.toc/inst/Import and filter TOC.qmd')$params
+   params <- rmarkdown::yaml_front_matter('~/git/0.RPackages/LEEF/measurements/LEEF.toc/inst/Import and filter TOC.qmd')$params
 }
 
 library(LEEF.analysis)
@@ -39,13 +39,13 @@ library(tidyr)
 library(ggplot2)
 library(ggExtra)
 options(dplyr.summarise.inform = FALSE)
+
+options(RRDdb = params$db)
 ```
 
 ```{r}
 #| label: pre_process
 #| eval: true
-
-options(RRDdb =  params$db)
 
 unlink(file.path(params$root_folder, "1.pre-processed.data", "toc"))
 pre_processor_toc(file.path(params$root_folder, "0.raw.data"), file.path(params$root_folder, "1.pre-processed.data"))
@@ -62,7 +62,6 @@ extractor_toc(file.path(params$root_folder, "1.pre-processed.data"), file.path(p
 ## Read parameter and data files and determine CV and number extra measurements
 ```{r}
 #| label: parameter
-
 
 fns <- sapply(
   list.files(file.path(params$root_folder, "2.extracted.data", "toc"), "\\.data\\.", full.names = FALSE),
