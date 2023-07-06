@@ -1,0 +1,687 @@
+---
+title: "Import and Filter TOC LEEF-2"
+format: 
+  html:
+    toc: true
+    code-fold: true
+    embed-resources: true
+    standalone: true
+    output-file: "Import and Filter TOC from LEEF-2"
+    # output-ext:  "html"
+editor: source
+execute:
+  error: false
+  cache: false
+params:
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF.RRD.sqlite"
+  LEEF: LEEF_2
+  min_TC: 5
+  min_IC: 0.3
+---
+
+## Some preliminary setup
+
+
+
+```{r}
+#| label: setup
+if (!exists("params")){
+   params <- rmarkdown::yaml_front_matter('~/git/0.RPackages/LEEF/measurements/LEEF.toc/inst/Import and filter TOC.qmd')$params
+}
+
+library(LEEF.analysis)
+library(LEEF.measurement.toc)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggExtra)
+options(dplyr.summarise.inform = FALSE)
+
+options(RRDdb = params$db)
+```
+
+```{r}
+#| label: pre_process
+#| eval: true
+
+unlink(file.path(params$root_folder, "1.pre-processed.data", "toc"))
+pre_processor_toc(file.path(params$root_folder, "0.raw.data"), file.path(params$root_folder, "1.pre-processed.data"))
+```
+
+```{r}
+#| label: extract
+#| eval: true
+
+unlink(file.path(params$root_folder, "2.extracted.data", "toc"))
+extractor_toc(file.path(params$root_folder, "1.pre-processed.data"), file.path(params$root_folder, "2.extracted.data"))
+```
+
+## Read parameter and data files and determine CV and number extra measurements
+```{r}
+#| label: parameter
+
+fns <- sapply(
+  list.files(file.path(params$root_folder, "2.extracted.data", "toc"), "\\.data\\.", full.names = FALSE),
+  function(fn){
+    x <- strsplit(fn, "\\.")[[1]][[1]]
+  }
+)
+
+data <- lapply(
+    fns,
+    function(fn){
+      p <- read.csv(file.path(params$root_folder, "2.extracted.data", "toc", paste(fn, "parameter", "csv", sep = ".")))
+      d <- read.csv(file.path(params$root_folder, "2.extracted.data", "toc", paste(fn, "data", "csv", sep = ".")))
+      return(list(
+        data = d, 
+        parameter = p, 
+        samples = max(p$samples), 
+        extra_samples = max(p$extra_samples), 
+        max_cv = max(p$max_cv)
+      )
+      )
+    }
+)
+
+sapply(data, "[[", "samples") |> plot(ylab = "samples") |> print()
+sapply(data, "[[", "extra_samples") |> plot(ylab = "extra_samples") |> print()
+sapply(data, "[[", "max_cv") |> plot(ylab = "max_cv") |> print()
+
+samples <- sapply(data, "[[", "samples") |> min()
+
+if (params$LEEF == "LEEF_1") {
+  extra_samples <- sapply(data, "[[", "extra_samples") |> min()
+} else if (params$LEEF == "LEEF_2") {
+  extra_samples <- sapply(data, "[[", "extra_samples") |> max()
+} else {
+  stop("Unsopported `params$LEEF` value.", " Only `LEEF_1` and `LEEF_2` are curerently supported!")
+}
+
+max_cv <- sapply(data, "[[", "max_cv") |> max()
+
+no_samples <- samples + extra_samples
+max_col <- (2 + 3 + no_samples * 2) + 1
+      
+```
+
+As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
+
+- **samples**: `r samples`
+- **extra_samples**: `r extra_samples`
+- **max_cv**: `r max_cv`
+
+In case there are more extra samples, the last ones were be discarded.
+
+
+## Read data and discard more than `r extra_samples` extra samples
+```{r}
+#| label: data
+toc <- lapply(
+  data,
+  function(x){
+    result <- x$data[,1:min(max_col, ncol(x$data))]
+    if (ncol(x$data) < max_col) {
+      sn <- paste0("conc_", 1:(extra_samples + samples))    
+      snm <- sn[!(sn %in% names(result))]
+      for (i in snm){
+        result[,snm] <- NA
+      }
+    }
+    return(result)
+  }
+) |> do.call(what = rbind)
+toc$id <- 1:nrow(toc)
+```
+
+
+## Remove missing `inj_type`
+
+We have the following measurements files with measurements without inj_type or `NULL`. These can nod be analysed and need to be excluded.
+
+```{r}
+toc %>%
+  filter(inj_type == "") %>%
+  group_by(filename) %>%
+  summarise(n = n()) %>% 
+  collect() %>%
+  knitr::kable()
+```
+
+These can be filtered out
+
+```{r}
+before <- nrow(toc)
+toc <- toc %>%
+  filter(inj_type != "")
+after <- nrow(toc)
+cat("Before : ", before, "\n")
+cat("Removed: ", before - after, "\n")
+cat("After  : ", after, "\n")
+```
+
+## Remove rows from validation / null samples
+
+In addition to the analysed samples, two more validation and null samples (H2O) were taken. Upon further consideration, these were considered as not useful and excluded from the analysis. They are saved as `toc_val_samples.csv`.
+
+```{r}
+toc %>%
+  filter(identification == "H2O" | identification == "2.5mg/lIC") %>%
+  group_by(filename) %>%
+  summarise(n = n()) %>% 
+  collect() %>%
+  knitr::kable()
+```
+
+These can be filtered out
+
+```{r}
+unlink(file.path(params$root_folder, "2.extracted.data", "toc_val_samples.csv"))
+toc %>%
+  filter(identification == "H2O" | identification == "2.5mg/lIC") %>%
+write.csv(file = file.path(params$root_folder, "2.extracted.data", "toc_val_samples.csv"))
+  
+before <- nrow(toc)
+toc <- toc %>%
+  filter(identification != "H2O" & identification != "2.5mg/lIC")
+after <- nrow(toc)
+cat("Before : ", before, "\n")
+cat("Removed: ", before - after, "\n")
+cat("After  : ", after, "\n")
+```
+
+
+## Check timestamp / id / Filename
+
+In each file, there should be a maximum of 1 timestamp, except of files which contain two timestamps, i.e. which are named accodingly.
+
+```{r}
+toc %>%
+  select(filename, timestamp, identification, inj_type) %>%
+  filter(identification != "H2O" & identification != "2.5mg/lIC") %>%
+  group_by(filename, timestamp) %>%
+  summarise(timestamps_count = n()) %>%
+  group_by(filename) %>%
+  summarise(number_of_timestamps = n()) %>%
+  arrange(desc(number_of_timestamps)) %>%
+  knitr::kable()
+```
+
+Fixed the following typos in the raw data. Now, it looks OK for me. 
+
+- `LEEF_21_12_10 und 21_12_13`: typos in `Identification`
+- `LEEF_22_05_18`: typo in `Identificatio`
+- `LEEF_21_11_12`: File name should be `LEEF_21_11_12 und 21_15_10A`
+- `LEEF_22_01_19 und 22_01_21A`: All analysis for 22_01_21 are not valid
+
+## Set unrealistic small TC values to `NA`
+
+A density plot of the values of the TC measurements in all measurements.
+```{r}
+tc <- toc %>%
+  filter(inj_type == "TC")
+tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_TC)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  geom_vline(xintercept = 5, col = "red")
+```
+One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
+
+Plot the previous plot zoomed in to conc <= 10 for each bottle
+
+### conc_1
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TC") %>%
+  ggplot(aes(x=conc_1)) + 
+  geom_vline(xintercept = params$min_TC, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_2
+```{r}
+#| fig-height: 40
+
+toc %>%
+  filter(inj_type == "TC") %>%
+  ggplot(aes(x=conc_2)) + 
+  geom_vline(xintercept = params$min_TC, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_3
+```{r}
+#| fig-height: 40
+
+toc %>%
+  filter(inj_type == "TC") %>%
+  ggplot(aes(x=conc_3)) + 
+  geom_vline(xintercept = params$min_TC, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+```{r}
+tc <- (toc$inj_type == "TC")
+toc$conc_1[tc & sapply(toc$conc_1 < params$min_TC, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < params$min_TC, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < params$min_TC, isTRUE)] <- NA
+
+```
+
+### Which are now gone
+
+```{r}
+tc <- toc %>%
+  filter(inj_type == "TC")
+tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_TC)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  geom_vline(xintercept = 5, col = "red")
+```
+
+## Set unrealistic small IC values to `NA`
+
+A density plot of the values of the IC measurements in all measurements.
+
+```{r}
+tc <- toc %>%
+  filter(inj_type == "IC")
+tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% 
+  ggplot(aes(x=conc_IC)) + 
+  geom_vline(xintercept = params$min_IC, col = "red") +
+  stat_density(bw = 0.001, na.rm = TRUE)
+```
+One can see for TC two peaks clearly separated. The values smaller than 0.3 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
+
+Plot the previous plot zoomed in to conc <= 3 for each bottle
+
+
+### conc_1
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  ggplot(aes(x=conc_1)) + 
+  geom_vline(xintercept = params$min_IC, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_2
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  ggplot(aes(x=conc_2)) + 
+  geom_vline(xintercept = params$min_IC, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### conc_3
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  ggplot(aes(x=conc_3)) + 
+  geom_vline(xintercept = params$min_IC, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+
+```{r}
+tc <- (toc$inj_type == "IC")
+toc$conc_1[tc & sapply(toc$conc_1 < params$min_IC, isTRUE)] <- NA
+toc$conc_2[tc & sapply(toc$conc_2 < params$min_IC, isTRUE)] <- NA
+toc$conc_3[tc & sapply(toc$conc_3 < params$min_IC, isTRUE)] <- NA
+
+```
+
+### Which are now gone
+
+```{r}
+tc <- toc %>%
+  filter(inj_type == "IC")
+tc <- data.frame(conc_IC = c(tc$conc_1, tc$conc_2, tc$conc_3))
+tc %>% ggplot(aes(x=conc_IC)) + 
+  geom_vline(xintercept = params$min_IC, col = "red") +
+  stat_density(bw = 0.001, na.rm = TRUE)
+```
+
+
+
+## Recalculate `conc` and `cv` for all measurements except TOC
+
+As the number of additional samples as well as the cv were different for some samples, we have to re-calculate conc and cv. The values which will be used are
+- **samples**: `r samples`
+- **extra_samples**: `r extra_samples`
+- **max_cv**: `r max_cv`
+In case there are more extra samples, the last ones were be discarded.
+
+As we are re-calculating TOC later, we can exclude the TOC values here.
+
+### Re-calculate `conc` and `cv`
+
+```{r}
+#| label: calc_conc_cv
+cvf <- function(x, y){
+  sapply(
+    1:length(x),
+    function(i){
+      sd(c(x[i], y[i])) / mean(c(x[i], y[i])) * 100
+    }
+  )
+}
+
+
+toc$cv_12 <- cvf(toc$conc_1, toc$conc_2)
+toc$cv_13 <- cvf(toc$conc_1, toc$conc_3)
+toc$cv_23 <- cvf(toc$conc_2, toc$conc_3)
+
+toc$conc_12 <- rowMeans(toc[,c("conc_1", "conc_2")])
+toc$conc_13 <- rowMeans(toc[,c("conc_1", "conc_3")])
+toc$conc_23 <- rowMeans(toc[,c("conc_2", "conc_3")])
+
+for (i in 1:nrow(toc)){
+  if (toc[i,"inj_type"] == "TOC"){
+    next()
+  }
+  if (isTRUE(as.numeric(toc[i,][["cv_12"]]) < max_cv)) {111
+    toc[i,]$conc <- mean(as.numeric(toc[i,][["conc_1"]]), as.numeric(toc[i,][["conc_2"]]))
+    toc[i,]$cv <- as.numeric(toc[i,][["cv_12"]])
+  } else {
+    sel <- suppressWarnings(
+      which(
+        toc[i, c("cv_12", "cv_13", "cv_23")] == min(
+          as.numeric(toc[i,][["cv_12"]]), 
+          as.numeric(toc[i,][["cv_13"]]), 
+          as.numeric(toc[i,][["cv_23"]]), 
+          na.rm = TRUE
+        )
+      ) 
+    )
+    if (length(sel) == 0) {
+      toc[i,]$conc <- NA
+      toc[i,]$cv <- NA
+      next()
+    }
+    if (((as.numeric(toc[i,][c("conc_1", "conc_2", "conc_3")]) == 0) |> sum(na.rm = TRUE)) > 1) {
+      toc[i,]$conc <- NA
+      toc[i,]$cv <- NA
+      next()
+    }
+    if (sel == 1) {
+      toc[i,]$conc <- mean(as.numeric(toc[i,][["conc_1"]]), as.numeric(toc[i,][["conc_2"]]))
+      toc[i,]$cv <- as.numeric(toc[i,][["cv_12"]])
+      next()
+    }
+    if (sel == 2) {
+      toc[i,]$conc <- mean(as.numeric(toc[i,][["conc_1"]]), as.numeric(toc[i,][["conc_3"]]))
+      toc[i,]$cv <- as.numeric(toc[i,][["cv_13"]])
+      next()
+    }
+    if (sel == 3) {
+      toc[i,]$conc <- mean(as.numeric(toc[i,][["conc_2"]]), as.numeric(toc[i,][["conc_3"]]))
+      toc[i,]$cv <- as.numeric(toc[i,][["cv_23"]])
+      next()
+    } else {
+      stop("Here is something seriously wrong!!!!")
+    }
+  }
+}
+
+```
+
+
+### Calculate TOC
+
+Now we re-calculate the TOC values.
+
+```{r}
+toc$conc[which(toc$inj_type == "TOC")] <- NA
+
+TOC_calc <- toc %>% 
+  mutate(an_id = paste(filename, position)) %>%
+  pivot_wider(id_cols = an_id, names_from = inj_type, values_from = conc) %>%
+  mutate(TOC_calc = TC - IC) %>%
+  select(an_id, TOC_calc) %>%
+  mutate(an_id = paste(an_id, "TOC"))
+
+toc <- toc %>% 
+  mutate(an_id = paste(filename, position, inj_type)) %>%
+  left_join(TOC_calc, by = "an_id") %>%
+  mutate( conc = ifelse(inj_type == "TOC", TOC_calc, conc) ) %>%
+  select( -TOC_calc, -an_id)
+```
+
+
+
+
+### Plot after re-calculation of the TOC values
+```{r}
+toc %>%   
+  ggplot(aes(x=conc)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_grid(rows = vars(inj_type), scales = "free_y")
+```
+
+
+## Plot the measured concentreation per bottle of all samples
+
+
+```{r}
+#| fig-height: 20
+toc %>%
+  ggplot(aes(x=conc)) + 
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_grid(rows = vars(bottle), cols = vars(inj_type), scales = "free")
+```
+
+### TC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 5, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### IC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "IC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 0.3, col = "red") +
+  stat_density(bw = 0.01, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### TOC
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TOC") %>%
+  ggplot(aes(x=conc)) + 
+  geom_vline(xintercept = 4.7, col = "red") +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+### TN
+
+```{r}
+#| fig-height: 40
+toc %>%
+  filter(inj_type == "TN") %>%
+  ggplot(aes(x=conc)) +
+  stat_density(bw = 0.1, na.rm = TRUE) +
+  facet_wrap(~bottle, ncol = 1, scales = "free_y")
+```
+
+
+
+## Add to database
+
+The toc is now added to the database
+```{r}
+#| label: add_to_db
+
+saveRDS(toc, file.path(params$root_folder, "toc.rds"))
+
+add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
+
+toc_original <- toc
+
+toc$id <- 1:nrow(toc)
+```
+
+
+
+
+## Plot after filtering
+Now let's look at the plots of the measurements per bottle per timestep
+```{r}
+#| label: plot_timestamps
+
+if (params$LEEF == "LEEF_1") {
+  p1 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TC", "TOC"))
+  p2 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
+  p3 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
+} else {
+  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TC", "TOC"))
+  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
+  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
+}
+p1
+p2
+p3
+```
+
+
+
+## Number of measurements per `timestamp`, `bottle` and `inj_type`
+
+We have to look if there are any duplicate measurements. 
+
+```{r}
+dupl <- toc %>%
+  group_by(timestamp, bottle, inj_type) %>%
+  filter(!is.na(bottle)) %>%
+  summarise(fn_1 = min(filename), fn_2 = max(filename), count = n(), min_conc = min(conc), max_conc = max(conc)) %>%
+  filter(count > 1 & count < 10) %>%  
+  mutate(diff = max_conc - min_conc) %>%
+  arrange(inj_type, diff)
+dupl %>% 
+  group_by(fn_1, fn_2, timestamp) %>%
+  summarise() %>%
+  arrange(timestamp) %>%
+  knitr::kable()
+```
+
+And some plots of the duplicate concentration values only
+```{r}
+dat <- db_read_toc(db =  params$db, duplicates = NULL) %>% 
+  collect()
+if (nrow(dat) > 0){
+dat$id <- 1:nrow(dat)
+ids <- dat %>% 
+  filter(!is.na(bottle)) %>%
+  group_by(timestamp, bottle, type) %>%
+  summarize(min(id), max(id), n = n()) %>%
+  filter(n > 1)
+ids <- c(ids$`min(id)`, ids$`max(id)`) |>
+  unique()
+x <- dat %>% 
+  filter(id %in% ids) %>%
+  group_by(day, timestamp, bottle, type) %>%
+  summarise(timestamp, bottle, type, mic = min(concentration), mac = max(concentration)) %>%
+  mutate(mdiff = mac - mic)
+}
+```
+### TN Duplicates
+
+```{r}
+if (nrow(x) > 0){
+  pl <- x %>%
+    filter(type == "TN") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
+  
+  ggMarginal(pl, type="histogram")
+}
+```
+### TC Duplicates
+
+```{r}
+if (nrow(x) > 0){
+  pl <- x %>%
+    filter(type == "TC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
+  
+  ggMarginal(pl, type="histogram")
+}
+```
+
+
+### IC Duplicates
+
+```{r}
+if (nrow(x) > 0){
+  pl <- x %>%
+    filter(type == "IC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
+  
+  ggMarginal(pl, type="histogram")
+}
+```
+
+### TOC Duplicates
+
+```{r}
+if (nrow(x) > 0){
+  pl <- x %>%
+    filter(type == "TOC") %>%
+    ggplot2::ggplot(ggplot2::aes(x = mic, y = mac, colour = type)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab("Smaler concentration Value") +
+    ggplot2::ylab("Larger concentration Value")
+  
+  ggMarginal(pl, type="histogram")
+}
+```
+
+## Final diagnostic report
+```{r}
+#| label: DiagnosticReport
+options(knitr.duplicate.label = "allow")
+try(
+  report_diagnostic(
+    db = params$db,  
+    template = params$LEEF,
+    suffix = "TOC_added", 
+    format = "html",
+    lastDays = 7
+  )
+)
+```
+

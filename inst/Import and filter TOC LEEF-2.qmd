@@ -1,23 +1,21 @@
 ---
-title: "Import and Filter TOC LEEF-1"
-output: 
+title: "Import and Filter TOC LEEF-2"
+format: 
   html:
     toc: true
-    toc-location: left
     code-fold: true
-    code-summary: "Show the code"
     embed-resources: true
     standalone: true
-    output-file: "Import and Filter TOC from LEEF-1"
-    output-ext:  "html"
+    output-file: "Import and Filter TOC from LEEF-2"
+    # output-ext:  "html"
 editor: source
 execute:
   error: false
   cache: false
 params:
-  root_folder: "/Volumes/LEEF/0.TOC/LEEF-1/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-1/LEEF.RRD.sqlite"
-  LEEF: LEEF_1
+  root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
+  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF.RRD.sqlite"
+  LEEF: LEEF_2
   min_TC: 5
   min_IC: 0.3
 ---
