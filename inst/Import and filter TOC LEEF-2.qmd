@@ -14,10 +14,10 @@ execute:
   cache: false
 params:
   root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
-  db: "/Volumes/LEEF/0.TOC/LEEF-2/LEEF.RRD.sqlite"
+  arrow: "/Volumes/LEEF/0.TOC/LEEF-2/arrow"
   LEEF: LEEF_2
-  min_TC: 5
-  min_IC: 0.3
+  min_TC: 10
+  min_IC: 0.75
 ---
 
 ## Some preliminary setup
@@ -27,7 +27,7 @@ params:
 ```{r}
 #| label: setup
 if (!exists("params")){
-   params <- rmarkdown::yaml_front_matter('~/git/0.RPackages/LEEF/measurements/LEEF.toc/inst/Import and filter TOC.qmd')$params
+   params <- rmarkdown::yaml_front_matter('~/git/0.RPackages/LEEF/measurements/LEEF.toc/inst/Import and filter TOC LEEF-2.qmd')$params
 }
 
 library(LEEF.analysis)
@@ -223,7 +223,7 @@ tc <- toc %>%
 tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_TC)) + 
   stat_density(bw = 0.1, na.rm = TRUE) +
-  geom_vline(xintercept = 5, col = "red")
+  geom_vline(xintercept = params$min_TC, col = "red")
 ```
 One can see for TC two peaks clearly separated. The values smaller than 5 will be set to `NA` as they are unrealistically low and can be linked to measuring errors in the machine.
 
@@ -280,7 +280,7 @@ tc <- toc %>%
 tc <- data.frame(conc_TC = c(tc$conc_1, tc$conc_2, tc$conc_3))
 tc %>% ggplot(aes(x=conc_TC)) + 
   stat_density(bw = 0.1, na.rm = TRUE) +
-  geom_vline(xintercept = 5, col = "red")
+  geom_vline(xintercept = params$min_TC, col = "red")
 ```
 
 ## Set unrealistic small IC values to `NA`
@@ -538,9 +538,26 @@ The toc is now added to the database
 ```{r}
 #| label: add_to_db
 
-saveRDS(toc, file.path(params$root_folder, "toc.rds"))
+toc_fn <- file.path(params$root_folder, "toc.rds")
 
-add_to_and_overwrite_table_in_RRD(toc = toc, dbname =  params$db)
+options(RRDarrow = params$arrow)
+
+saveRDS(toc, toc_fn)
+
+dir.create(params$arrow, recursive = TRUE, showWarnings = FALSE)
+parquet_add_toc(
+    fn = toc_fn,
+    path_to_parquet_root_dir = params$arrow,
+    rename = FALSE
+)
+
+## Add experimenal design
+
+object <- read.csv(file.path(params$root_folder, "experimental_design.csv"))
+
+path_to_parquet <- file.path(params$arrow, "experimental_design", "")
+dir.create(path_to_parquet, recursive = TRUE, showWarnings = FALSE)
+object_to_parquet(object = object, path_to_parquet = path_to_parquet)
 
 toc_original <- toc
 
@@ -560,9 +577,9 @@ if (params$LEEF == "LEEF_1") {
   p2 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
   p3 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
 } else {
-  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TC", "TOC"))
-  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
-  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
+  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("TC", "TOC"), arrow = TRUE)
+  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("IC"), arrow = TRUE)
+  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("TN"), arrow = TRUE)
 }
 p1
 p2
@@ -592,7 +609,7 @@ dupl %>%
 
 And some plots of the duplicate concentration values only
 ```{r}
-dat <- db_read_toc(db =  params$db, duplicates = NULL) %>% 
+dat <- arrow_read_toc(db =  params$arrow) %>% 
   collect()
 if (nrow(dat) > 0){
 dat$id <- 1:nrow(dat)
@@ -673,6 +690,9 @@ if (nrow(x) > 0){
 ## Final diagnostic report
 ```{r}
 #| label: DiagnosticReport
+#| eval: false
+#| 
+
 options(knitr.duplicate.label = "allow")
 try(
   report_diagnostic(

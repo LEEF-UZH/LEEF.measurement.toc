@@ -21,3 +21,5 @@ tmp
 9.backend
 .RDataTmp
 .RDataTmp1
+inst/LEEF.toc.code-workspace
+inst/Import-and-filter-TOC-LEEF-2_files/*
