@@ -14,7 +14,7 @@ execute:
   cache: false
 params:
   root_folder: "/Volumes/LEEF/0.TOC/LEEF-2/"
-  arrow: "/Volumes/LEEF/0.TOC/LEEF-2/arrow"
+  parquet: "/Volumes/LEEF/0.TOC/LEEF-2/parquet"
   LEEF: LEEF_2
   min_TC: 10
   min_IC: 0.75
@@ -439,6 +439,8 @@ for (i in 1:nrow(toc)){
 ```
 
 
+
+
 ### Calculate TOC
 
 Now we re-calculate the TOC values.
@@ -461,6 +463,28 @@ toc <- toc %>%
 ```
 
 
+### Remove all where `conc == NA`
+We have some `NA` values in the calculated `conc` values. These are removed.
+```{r}
+toc %>%
+  filter(is.na(conc)) %>%
+  group_by(filename) %>%
+  summarise(n = n()) %>% 
+  collect() %>%
+  knitr::kable()
+```
+
+These can be filtered out
+
+```{r}
+before <- nrow(toc)
+toc <- toc %>%
+  filter(!is.na(conc))
+after <- nrow(toc)
+cat("Before : ", before, "\n")
+cat("Removed: ", before - after, "\n")
+cat("After  : ", after, "\n")
+```
 
 
 ### Plot after re-calculation of the TOC values
@@ -540,14 +564,14 @@ The toc is now added to the database
 
 toc_fn <- file.path(params$root_folder, "toc.rds")
 
-options(RRDarrow = params$arrow)
+options(RRDarrow = params$parquet)
 
 saveRDS(toc, toc_fn)
 
-dir.create(params$arrow, recursive = TRUE, showWarnings = FALSE)
+dir.create(params$parquet, recursive = TRUE, showWarnings = FALSE)
 parquet_add_toc(
     fn = toc_fn,
-    path_to_parquet_root_dir = params$arrow,
+    path_to_parquet_root_dir = params$parquet,
     rename = FALSE
 )
 
@@ -555,7 +579,7 @@ parquet_add_toc(
 
 object <- read.csv(file.path(params$root_folder, "experimental_design.csv"))
 
-path_to_parquet <- file.path(params$arrow, "experimental_design", "")
+path_to_parquet <- file.path(params$parquet, "experimental_design", "")
 dir.create(path_to_parquet, recursive = TRUE, showWarnings = FALSE)
 object_to_parquet(object = object, path_to_parquet = path_to_parquet)
 
@@ -577,9 +601,9 @@ if (params$LEEF == "LEEF_1") {
   p2 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("IC"))
   p3 <- plot_tocs_per_bottle_per_timestamp(db =  params$db, c("TN"))
 } else {
-  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("TC", "TOC"), arrow = TRUE)
-  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("IC"), arrow = TRUE)
-  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$arrow, c("TN"), arrow = TRUE)
+  p1 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$parquet, c("TC", "TOC"), arrow = TRUE)
+  p2 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$parquet, c("IC"), arrow = TRUE)
+  p3 <- LEEF_2_plot_tocs_per_bottle_per_timestamp(db = params$parquet, c("TN"), arrow = TRUE)
 }
 p1
 p2
@@ -609,7 +633,7 @@ dupl %>%
 
 And some plots of the duplicate concentration values only
 ```{r}
-dat <- arrow_read_toc(db =  params$arrow) %>% 
+dat <- arrow_read_toc(db =  params$parquet) %>% 
   collect()
 if (nrow(dat) > 0){
 dat$id <- 1:nrow(dat)
