@@ -7,13 +7,13 @@
   "codeRepository": "https://github.com/LEEF-UZH/LEEF.measurement.toc",
   "issueTracker": "https://github.com/LEEF-UZH/LEEF.measurement.toc/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.9.7",
+  "version": "1.0.0",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
     "url": "https://r-project.org"
   },
-  "runtimePlatform": "R version 4.2.2 (2022-10-31)",
+  "runtimePlatform": "R version 4.3.2 (2023-10-31)",
   "author": [
     {
       "@type": "Person",
@@ -117,6 +117,6 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "32.578KB",
+  "fileSize": "16805.689KB",
   "readme": "https://github.com/LEEF-UZH/LEEF.measurement.toc/blob/master/Readme.md"
 }
